@@ -15,22 +15,36 @@
  * Idempotent: running it twice will not duplicate rows.
  */
 
-import "dotenv/config";
+import { existsSync } from "node:fs";
+import path from "node:path";
+import dotenv from "dotenv";
 import { eq, and } from "drizzle-orm";
 import { Pool } from "pg";
 import { drizzle } from "drizzle-orm/node-postgres";
 import * as schema from "../src/db/schema";
 
+const envFiles = [".env.local", ".env"];
+for (const envFile of envFiles) {
+  const envPath = path.resolve(process.cwd(), envFile);
+  if (existsSync(envPath)) {
+    dotenv.config({ path: envPath, override: false });
+  }
+}
+
 async function main() {
   const url = process.env.DATABASE_URL;
   if (!url) {
-    console.error("ERROR: DATABASE_URL is required.");
+    console.error(
+      "ERROR: DATABASE_URL is required. Export it in your shell or add it to .env.local in the repo root.",
+    );
     process.exit(1);
   }
 
   const email = (process.argv[2] ?? process.env.SEED_EMAIL ?? "[email protected]")
     .trim()
     .toLowerCase();
+  const memberEmail =
+    process.env.SEED_MEMBER_EMAIL?.trim().toLowerCase() || "phase3-viewer-demo@local.invalid";
 
   const pool = new Pool({ connectionString: url });
   const db = drizzle(pool, { schema });
@@ -101,6 +115,46 @@ async function main() {
     console.log("  ✓ created owner membership");
   } else {
     console.log("  • membership exists");
+  }
+
+  // 3b) viewer member for permission checks
+  let memberUser = (
+    await db.select().from(schema.users).where(eq(schema.users.email, memberEmail)).limit(1)
+  )[0];
+  if (!memberUser) {
+    memberUser = (
+      await db
+        .insert(schema.users)
+        .values({ email: memberEmail, name: "Demo Member", isSystemAdmin: false })
+        .returning()
+    )[0]!;
+    console.log(`  ✓ created viewer user ${memberUser.id}`);
+  } else {
+    console.log(`  • viewer user exists ${memberUser.id}`);
+  }
+
+  const memberMembership = (
+    await db
+      .select()
+      .from(schema.tenantMembers)
+      .where(
+        and(
+          eq(schema.tenantMembers.tenantId, tenant.id),
+          eq(schema.tenantMembers.userId, memberUser.id),
+        ),
+      )
+      .limit(1)
+  )[0];
+  if (!memberMembership) {
+    await db.insert(schema.tenantMembers).values({
+      tenantId: tenant.id,
+      userId: memberUser.id,
+      role: "viewer",
+      status: "active",
+    });
+    console.log("  ✓ created viewer membership");
+  } else {
+    console.log(`  • viewer membership exists (${memberMembership.role})`);
   }
 
   // 4) settings

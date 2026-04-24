@@ -77,7 +77,11 @@ export const users = pgTable(
     email: text("email").notNull(),
     name: text("name"),
     image: text("image"),
+    phone: text("phone"),
+    passwordHash: text("password_hash"),
+    status: text("status").notNull().default("active"),
     emailVerified: boolean("email_verified").notNull().default(false),
+    phoneVerified: boolean("phone_verified").notNull().default(false),
     isSystemAdmin: boolean("is_system_admin").notNull().default(false),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
@@ -697,12 +701,14 @@ export const roles = pgTable(
     code: text("code").notNull(),
     name: text("name").notNull(),
     description: text("description"),
+    scopeType: text("scope_type").notNull().default("tenant"), // 'system' | 'tenant'
     isSystemRole: boolean("is_system_role").notNull().default(false),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
   },
   (t) => ({
     byTenant: index("roles_tenant_idx").on(t.tenantId),
+    byScope: index("roles_scope_idx").on(t.scopeType),
   }),
 );
 
@@ -853,3 +859,81 @@ export type BusinessNature = (typeof businessNature.enumValues)[number];
 export type ItemStatus = (typeof itemStatus.enumValues)[number];
 export type ProductType = (typeof productType.enumValues)[number];
 export type ServiceType = (typeof serviceType.enumValues)[number];
+
+/* ════════════════════════════════════════════════════════════════ */
+/*  PHASE 4                                                         */
+/*  Identity: password login, phone OTP, system roles.              */
+/*  See /docs/architecture/auth-v2.md                               */
+/* ════════════════════════════════════════════════════════════════ */
+
+export const userSystemRoles = pgTable(
+  "user_system_roles",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    roleId: uuid("role_id")
+      .notNull()
+      .references(() => roles.id, { onDelete: "cascade" }),
+    status: text("status").notNull().default("active"), // active | disabled
+    assignedByUserId: uuid("assigned_by_user_id").references(() => users.id, {
+      onDelete: "set null",
+    }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => ({
+    userRoleUq: uniqueIndex("user_system_roles_user_role_uq").on(t.userId, t.roleId),
+    byUser: index("user_system_roles_user_idx").on(t.userId),
+  }),
+);
+
+export const phoneVerifications = pgTable(
+  "phone_verifications",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    userId: uuid("user_id").references(() => users.id, { onDelete: "cascade" }),
+    pendingRegistrationId: uuid("pending_registration_id"),
+    phone: text("phone").notNull(),
+    codeHash: text("code_hash").notNull(),
+    purpose: text("purpose").notNull().default("register"),
+    expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+    verifiedAt: timestamp("verified_at", { withTimezone: true }),
+    attempts: integer("attempts").notNull().default(0),
+    maxAttempts: integer("max_attempts").notNull().default(5),
+    provider: text("provider").notNull().default("whatsapp_gateway"),
+    providerMessageId: text("provider_message_id"),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => ({
+    byPhone: index("phone_verifications_phone_idx").on(t.phone),
+    byPending: index("phone_verifications_pending_idx").on(t.pendingRegistrationId),
+  }),
+);
+
+export const pendingRegistrations = pgTable(
+  "pending_registrations",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    businessName: text("business_name").notNull(),
+    fullName: text("full_name").notNull(),
+    email: text("email").notNull(),
+    phone: text("phone").notNull(),
+    passwordHash: text("password_hash").notNull(),
+    businessNature: text("business_nature"),
+    numberOfAgents: integer("number_of_agents"),
+    tenantSlugCandidate: text("tenant_slug_candidate").notNull(),
+    expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+    verifiedAt: timestamp("verified_at", { withTimezone: true }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => ({
+    byEmail: index("pending_registrations_email_idx").on(sql`lower(${t.email})`),
+    byPhone: index("pending_registrations_phone_idx").on(t.phone),
+  }),
+);
+
+export type UserSystemRole = typeof userSystemRoles.$inferSelect;
+export type PhoneVerification = typeof phoneVerifications.$inferSelect;
+export type PendingRegistration = typeof pendingRegistrations.$inferSelect;

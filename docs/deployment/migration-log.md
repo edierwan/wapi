@@ -14,6 +14,9 @@ Both share the same physical Postgres instance. Schema must match.
 |---|---|---|---|---|---|
 | 0000 | `drizzle/0000_parallel_mole_man.sql` | Phase 2 | ✅ | ✅ | Initial schema: users, sessions, tenants, tenant_members, tenant_settings, connected_accounts, whatsapp_sessions, ai_provider_configs, tenant_ai_settings. |
 | 0001 | `drizzle/0001_friendly_doomsday.sql` | Phase 3 | ✅ | ✅ | Adds tenant_business_profiles, products / product_categories / product_variants / product_prices / product_media / price_lists, services / service_categories / service_packages / service_package_items / service_availability, roles / permissions / role_permissions, audit_logs, api_keys, webhook_endpoints, storage_objects. |
+| 0002 | `drizzle/0002_special_mentor.sql` | Phase 4 | ✅ | ✅ | Identity: adds `users.phone`, `users.password_hash`, `users.status`, `users.phone_verified`, `roles.scope_type`. Creates `user_system_roles`, `phone_verifications`, `pending_registrations`. 31 tables total. |
+| RBAC-1 | `scripts/sql/0001_bootstrap_system_rbac.sql` | Phase 4 | ✅ | ✅ | Idempotent seed: 19 system permissions, 4 system roles (`SYSTEM_SUPER_ADMIN`/`ADMIN`/`SUPPORT`/`BILLING`), role↔permission mappings. Re-runnable. Applied via `docker exec ... psql -f`. |
+| ADMIN-1 | (one-shot, not tracked) | Phase 4 | — | ✅ wapi.dev only | Bootstrapped `admin@getouch.co` (Getouch Admin) with bcrypt password hash and `SYSTEM_SUPER_ADMIN` role. SQL composed from local env via `pnpm db:bootstrap:admin` flow (password never committed). Run on production via Coolify exec: `BOOTSTRAP_SUPER_ADMIN_EMAIL=… BOOTSTRAP_SUPER_ADMIN_PASSWORD=… pnpm db:bootstrap:admin`. |
 
 ## How to apply a new migration
 

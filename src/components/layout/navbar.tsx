@@ -5,8 +5,9 @@ import { useState } from "react";
 import { Menu, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Logo } from "@/components/layout/logo";
-import { nav, hero } from "@/config/marketing";
+import { nav } from "@/config/marketing";
 import { cn } from "@/lib/utils";
+import { ThemeToggle } from "@/components/theme-toggle";
 
 export type NavbarUser = { email: string; name: string | null } | null;
 
@@ -39,6 +40,7 @@ export function Navbar({
         )}
 
         <div className="hidden items-center gap-3 md:flex">
+          <ThemeToggle />
           {user ? (
             <>
               <span className="hidden text-xs text-[var(--muted-foreground)] lg:inline">
@@ -54,7 +56,7 @@ export function Navbar({
                 <Link href="/login">Sign in</Link>
               </Button>
               <Button asChild size="sm">
-                <Link href={hero.primaryCta.href}>{hero.primaryCta.label}</Link>
+                <Link href="/register">Register</Link>
               </Button>
             </>
           )}
@@ -88,7 +90,8 @@ export function Navbar({
                 {item.label}
               </Link>
             ))}
-          <div className="mt-2 flex gap-2">
+          <div className="mt-2 flex items-center gap-2">
+            <ThemeToggle />
             {user ? (
               <Button asChild size="sm" className="flex-1">
                 <Link href="/dashboard">Dashboard</Link>
@@ -99,7 +102,7 @@ export function Navbar({
                   <Link href="/login">Sign in</Link>
                 </Button>
                 <Button asChild size="sm" className="flex-1">
-                  <Link href={hero.primaryCta.href}>{hero.primaryCta.label}</Link>
+                  <Link href="/register">Register</Link>
                 </Button>
               </>
             )}

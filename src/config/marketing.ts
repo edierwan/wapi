@@ -36,7 +36,7 @@ export const hero = {
   title: "Grow on WhatsApp without the chaos.",
   subtitle:
     "WAPI gives you one calm place to run campaigns, reply to customers, and measure what works — built for teams that take messaging seriously.",
-  primaryCta: { label: "Start Free Trial", href: "/login" },
+  primaryCta: { label: "Start Free Trial", href: "/register" },
   secondaryCta: { label: "Book a Demo", href: "mailto:support@getouch.co" },
   trustBadges: [
     "End-to-end on WhatsApp",

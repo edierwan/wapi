@@ -85,6 +85,15 @@ export async function signInWithEmail(input: {
   if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email))
     throw new Error("A valid email is required.");
 
+  if (
+    process.env.NODE_ENV === "production" &&
+    process.env.ENABLE_DEV_EMAIL_LOGIN !== "true"
+  ) {
+    throw new Error(
+      "Email-only login is disabled. Please sign in with your password.",
+    );
+  }
+
   const db = requireDb();
   const existing = await db
     .select()
@@ -101,12 +110,45 @@ export async function signInWithEmail(input: {
     user = inserted[0]!;
   }
 
+  await issueSessionForUser(user.id);
+  return user;
+}
+
+export async function signInWithPassword(input: {
+  email: string;
+  password: string;
+}): Promise<User> {
+  const { verifyPassword } = await import("./password");
+  const email = input.email.trim().toLowerCase();
+  if (!email || !input.password) throw new Error("Email and password required.");
+
+  const db = requireDb();
+  const rows = await db
+    .select()
+    .from(users)
+    .where(eq(users.email, email))
+    .limit(1);
+  const user = rows[0];
+  if (!user) throw new Error("Invalid email or password.");
+  if (user.status && user.status !== "active")
+    throw new Error("This account is disabled.");
+
+  const ok = await verifyPassword(input.password, user.passwordHash ?? null);
+  if (!ok) throw new Error("Invalid email or password.");
+
+  await issueSessionForUser(user.id);
+  return user;
+}
+
+/** Creates a session row + sets the signed cookie for a user. Internal helper. */
+export async function issueSessionForUser(userId: string): Promise<void> {
+  const db = requireDb();
   const token = crypto.randomBytes(32).toString("hex");
   const expiresAt = new Date(Date.now() + SESSION_TTL_MS);
 
   const hdrs = await headers();
   await db.insert(sessions).values({
-    userId: user.id,
+    userId,
     token,
     expiresAt,
     userAgent: hdrs.get("user-agent") ?? null,
@@ -120,8 +162,6 @@ export async function signInWithEmail(input: {
     path: "/",
     expires: expiresAt,
   });
-
-  return user;
 }
 
 export async function signOut(): Promise<void> {

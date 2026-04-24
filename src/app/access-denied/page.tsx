@@ -9,9 +9,10 @@ export const dynamic = "force-dynamic";
 export default async function AccessDeniedPage({
   searchParams,
 }: {
-  searchParams: Promise<{ slug?: string }>;
+  searchParams: Promise<{ slug?: string; reason?: string }>;
 }) {
-  const { slug } = await searchParams;
+  const { slug, reason } = await searchParams;
+  const isAdmin = reason === "admin";
 
   return (
     <div className="flex min-h-dvh flex-col">
@@ -22,22 +23,38 @@ export default async function AccessDeniedPage({
             Access denied
           </h1>
           <p className="mt-2 text-[var(--muted-foreground)]">
-            You don&apos;t have access to{" "}
-            {slug ? (
+            {isAdmin ? (
               <>
-                the workspace <span className="font-mono">{slug}</span>
+                You don&apos;t have permission to access the system
+                admin console. If you believe this is a mistake,{" "}
+                <a
+                  href={`mailto:${appConfig.support.email}`}
+                  className="text-[var(--foreground)] underline"
+                >
+                  contact support
+                </a>
+                .
               </>
             ) : (
-              "this workspace"
+              <>
+                You don&apos;t have access to{" "}
+                {slug ? (
+                  <>
+                    the workspace <span className="font-mono">{slug}</span>
+                  </>
+                ) : (
+                  "this workspace"
+                )}
+                . Ask an owner to invite you, or{" "}
+                <a
+                  href={`mailto:${appConfig.support.email}`}
+                  className="text-[var(--foreground)] underline"
+                >
+                  contact support
+                </a>
+                .
+              </>
             )}
-            . Ask an owner to invite you, or{" "}
-            <a
-              href={`mailto:${appConfig.support.email}`}
-              className="text-[var(--foreground)] underline"
-            >
-              contact support
-            </a>
-            .
           </p>
           <div className="mt-6 flex items-center justify-center gap-3">
             <Button asChild>

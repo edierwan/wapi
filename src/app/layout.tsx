@@ -1,4 +1,5 @@
 import type { Metadata, Viewport } from "next";
+import { cookies } from "next/headers";
 import "./globals.css";
 import { appConfig } from "@/config/app";
 
@@ -48,13 +49,16 @@ export const viewport: Viewport = {
   initialScale: 1,
 };
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
+  const cookieStore = await cookies();
+  const theme = cookieStore.get("wapi_theme")?.value;
+  const htmlClass = theme === "dark" ? "dark" : "";
   return (
-    <html lang="en" suppressHydrationWarning>
+    <html lang="en" className={htmlClass} suppressHydrationWarning>
       <body className="min-h-dvh font-sans antialiased">{children}</body>
     </html>
   );

@@ -10,6 +10,12 @@ connect WhatsApp, teach the system about their business, generate and
 approve campaigns, send safely, manage replies, detect hot leads, and
 automate follow-up — with AI as the default co-pilot, not the autopilot.
 
+## Differentiation statement
+
+> Most WhatsApp tools help businesses **send** messages.
+> WAPI helps businesses **understand replies, detect leads, personalise
+> follow-ups, and turn WhatsApp conversations into sales actions.**
+
 ## Who it is for
 
 Primary persona: **SME owner / marketing manager / admin** who already
