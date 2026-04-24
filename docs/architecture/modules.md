@@ -1,0 +1,82 @@
+# WAPI modules
+
+Top-level modules and how they relate. Each module has its own doc for
+deeper schema.
+
+```
+┌─────────────── Tenant / Workspace ────────────────┐
+│  tenants · tenant_members · tenant_settings       │
+│  tenant_business_profiles · tenant_ai_settings    │
+└──────────────────────┬─────────────────────────────┘
+                       │ owns
+     ┌─────────────────┼─────────────────┬──────────────┬─────────────┐
+     ▼                 ▼                 ▼              ▼             ▼
+ WhatsApp           Master Data      Contacts/CRM   Campaigns      Inbox
+ connected_accounts products         contacts       campaigns      inbox_threads
+ whatsapp_sessions  services         contact_lists  campaign_*     inbox_messages
+                    price_lists      opt_outs                      ai_suggested_replies
+                    branches                                       assignments
+                    business_hours
+                    payment_methods
+     ▲                 ▲                 ▲              ▲             ▲
+     └────────── feeds prompts ────── AI + MCP layer ──────────────────┘
+                                      ai_provider_configs · ai_generations
+                       ┌──────────────────┴──────────────────┐
+                       ▼                                      ▼
+                  Admin / System                       Billing
+                  audit_logs · api_keys                plans · subscriptions
+                  webhook_endpoints · roles            invoices · payments
+                  permissions                          usage_counters
+```
+
+## Module list
+
+| Module | Purpose | Phase | Detail doc |
+|---|---|---|---|
+| A. Tenant / Workspace | Multi-tenant root, memberships, business profile | 2–3 | [master-data.md](./master-data.md#tenant-business-profile) |
+| B. Auth & Security | Users, sessions, roles, permissions, audit | 2, deepen 8 | [auth.md](./auth.md), [security.md](./security.md) |
+| C. WhatsApp Accounts | Connected numbers + Baileys sessions | 3, deepen 5 | [whatsapp-gateway.md](./whatsapp-gateway.md) |
+| D. Contacts / CRM | Contacts, lists, tags, opt-outs, lead status | 4 | [master-data.md](./master-data.md#contacts-crm) |
+| E. Product master | ERP-lite product catalog | 3 schema, 4 UI | [master-data.md](./master-data.md#product-master) |
+| F. Service master | Appointment/package/subscription services | 3 schema, 4 UI | [master-data.md](./master-data.md#service-master) |
+| G. Campaigns | Header/item campaign model | 6 | — (Phase 6) |
+| H. Inbox | Thread/message/event model + realtime | 7 | [realtime.md](./realtime.md) |
+| I. AI | Providers, tenant AI settings, generations log | 2 schema, deepen 5–7 | [ai-dify.md](./ai-dify.md) |
+| J. MCP tools | Internal AI tool layer | 10 | [mcp-tools.md](./mcp-tools.md) |
+| K. Admin Console | System/support/billing admin | 8 | [admin-console.md](./admin-console.md) |
+| L. Billing & Payments | Plans, subs, invoices, usage | 9 | [billing-and-payments.md](./billing-and-payments.md) |
+| M. Storage (objects) | MinIO/S3 media storage | 4 | [storage.md](./storage.md) |
+| N. Audit / Compliance | Audit logs, consent, data export | 8 | [security.md](./security.md#audit--compliance) |
+| O. Reporting / KPI | Tenant + admin KPI views | 8 | — (Phase 8) |
+
+## Transactional pattern
+
+All transactional modules (campaigns, orders, bookings, quotes, invoices, payments)
+follow a **header + items** shape:
+
+| Header | Items/events |
+|---|---|
+| `campaigns` | `campaign_audiences`, `campaign_messages`, `campaign_events` |
+| `orders` (future) | `order_items`, `order_events` |
+| `bookings` (future) | `booking_items`, `booking_events` |
+| `quotes` (future) | `quote_items` |
+| `invoices` (billing) | `invoice_items`, `payments` |
+
+Rule: never shove details into a `jsonb` column on the header when the
+detail might be queried, reported on, or referenced by a foreign key.
+`jsonb` is fine for free-form metadata (`products.metadata`), not for
+line items.
+
+## Tenant isolation rule
+
+Every row in every non-global table carries `tenant_id`. Every query
+filters by `tenant_id`. Exceptions (allowed to have NULL tenant_id):
+
+- `users` (users can belong to many tenants)
+- `ai_provider_configs` when `tenant_id IS NULL` → system default
+- `roles` when `tenant_id IS NULL` → system-supplied role template
+- `plans` (global pricing catalog)
+- `permissions` (global catalog)
+
+All MCP tools and all server actions resolve `tenant_id` from the
+authenticated context — **never** from client input.

@@ -4,9 +4,11 @@ import {
   BarChart3,
   Inbox,
   MessagesSquare,
+  Package,
   Smartphone,
   Sparkles,
   Users,
+  Wrench,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -16,8 +18,9 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { getCurrentUser } from "@/server/auth";
-import { resolveTenantBySlug } from "@/server/tenant";
+import { TenantSubNav } from "@/components/tenant/sub-nav";
+import { requireTenantContext } from "@/server/tenant-guard";
+import { isOnboardingComplete } from "@/server/business-profile";
 
 export const dynamic = "force-dynamic";
 
@@ -27,70 +30,74 @@ export default async function TenantWorkspacePage({
   params: Promise<{ tenantSlug: string }>;
 }) {
   const { tenantSlug } = await params;
-  const me = await getCurrentUser();
-  if (!me) redirect("/login");
+  const ctx = await requireTenantContext(tenantSlug);
 
-  const res = await resolveTenantBySlug({
-    slug: tenantSlug,
-    currentUserId: me.id,
-  });
-
-  if (!res.ok) {
-    switch (res.error.kind) {
-      case "forbidden":
-        redirect(`/access-denied?slug=${encodeURIComponent(tenantSlug)}`);
-      case "suspended":
-      case "disabled":
-        redirect(
-          `/workspace-not-found?slug=${encodeURIComponent(
-            tenantSlug,
-          )}&status=${res.error.status}`,
-        );
-      case "not-found":
-      case "invalid-slug":
-      case "reserved-slug":
-      default:
-        redirect(`/workspace-not-found?slug=${encodeURIComponent(tenantSlug)}`);
-    }
+  if (!(await isOnboardingComplete(ctx.tenant.id))) {
+    redirect(`/t/${ctx.tenant.slug}/onboarding`);
   }
 
-  const { tenant, currentUserRole } = res;
+  const { tenant, currentUserRole } = ctx;
 
-  const placeholders = [
+  const tiles = [
     {
       title: "WhatsApp Accounts",
       description: "Connect one or more numbers. Each maps to a Baileys session.",
-      icon: Smartphone,
+      href: `/t/${tenant.slug}/whatsapp`,
+      Icon: Smartphone,
+    },
+    {
+      title: "Products",
+      description: "Master data your AI uses when quoting prices.",
+      href: `/t/${tenant.slug}/products`,
+      Icon: Package,
+    },
+    {
+      title: "Services",
+      description: "Appointments, packages, subscriptions.",
+      href: `/t/${tenant.slug}/services`,
+      Icon: Wrench,
     },
     {
       title: "Contacts",
       description: "Import, tag, and segment your audience.",
-      icon: Users,
+      href: `/t/${tenant.slug}/contacts`,
+      Icon: Users,
+      soon: true,
     },
     {
       title: "Campaigns",
-      description: "Create, schedule, and measure broadcasts.",
-      icon: MessagesSquare,
+      description: "Draft with AI, approve, schedule, send safely.",
+      href: `/t/${tenant.slug}/campaigns`,
+      Icon: MessagesSquare,
+      soon: true,
     },
     {
       title: "Inbox",
-      description: "Shared inbox for team replies and assignments.",
-      icon: Inbox,
+      description: "Shared inbox, AI-suggested replies, assignments.",
+      href: `/t/${tenant.slug}/inbox`,
+      Icon: Inbox,
+      soon: true,
     },
     {
       title: "AI Assistant",
-      description: "On-brand drafts powered by your tenant's AI provider.",
-      icon: Sparkles,
+      description: "Business Brain-powered drafts. Human approves before send.",
+      href: `/t/${tenant.slug}/ai`,
+      Icon: Sparkles,
+      soon: true,
     },
     {
       title: "Analytics",
-      description: "Delivery, reply, and conversion insights.",
-      icon: BarChart3,
+      description: "Delivery, reply, hot leads, opt-outs.",
+      href: `/t/${tenant.slug}/analytics`,
+      Icon: BarChart3,
+      soon: true,
     },
   ];
 
   return (
     <section className="mx-auto max-w-7xl px-4 py-12 sm:px-6 lg:px-8">
+      <TenantSubNav slug={tenant.slug} active="Overview" />
+
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
           <div className="mb-3 flex items-center gap-2 text-xs text-[var(--muted-foreground)]">
@@ -124,23 +131,30 @@ export default async function TenantWorkspacePage({
       </div>
 
       <div className="mt-10 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-        {placeholders.map((p) => {
-          const Icon = p.icon;
-          return (
-            <Card key={p.title} className="opacity-90">
+        {tiles.map((t) => {
+          const Icon = t.Icon;
+          const card = (
+            <Card className={t.soon ? "opacity-90" : "transition hover:border-[var(--primary)]/40"}>
               <CardHeader>
                 <div className="mb-3 inline-flex size-10 items-center justify-center rounded-lg bg-[color-mix(in_oklch,var(--primary)_12%,transparent)] text-[var(--primary)]">
                   <Icon className="size-5" />
                 </div>
                 <CardTitle className="flex items-center justify-between gap-2">
-                  {p.title}
-                  <Badge className="text-[10px]">Coming soon</Badge>
+                  {t.title}
+                  {t.soon && <Badge className="text-[10px]">Coming soon</Badge>}
                 </CardTitle>
                 <CardDescription className="leading-relaxed">
-                  {p.description}
+                  {t.description}
                 </CardDescription>
               </CardHeader>
             </Card>
+          );
+          return t.soon ? (
+            <div key={t.title}>{card}</div>
+          ) : (
+            <Link key={t.title} href={t.href} className="block">
+              {card}
+            </Link>
           );
         })}
       </div>

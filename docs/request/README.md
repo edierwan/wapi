@@ -17,3 +17,9 @@ explicitly deferred.
 
 Mark an item as "done" by moving the file to `docs/request/done/` or
 deleting it once confirmed in infra.
+
+## Related product docs
+
+- [/docs/product/wapi-product-vision.md](../product/wapi-product-vision.md)
+- [/docs/product/differentiators.md](../product/differentiators.md)
+- [/docs/product/roadmap.md](../product/roadmap.md)

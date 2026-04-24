@@ -10,11 +10,21 @@ dev and the Coolify-deployed `wapi.getouch.co`.
 psql "$DATABASE_URL" -c "select 1;"
 
 # 2. Apply the generated migration once (first time only, or after schema changes)
-pnpm drizzle-kit migrate    # or: pnpm db:migrate
-# alternative: psql "$DATABASE_URL" -f drizzle/0000_parallel_mole_man.sql
+# Recommended when running from a machine that already has DATABASE_URL exported:
+pnpm db:migrate
+
+# Alternative direct SQL path (useful from pgAdmin / psql / remote box):
+psql "$DATABASE_URL" -f drizzle/0000_parallel_mole_man.sql
 
 # 3. Seed demo tenant + owner user
 pnpm db:seed [email protected]
+```
+
+If your DB credentials contain `@`, URL-encode them in `DATABASE_URL`.
+Example:
+
+```bash
+export DATABASE_URL='postgresql://admin%40getouch.co:Turun%402020@getouch-postgres:5432/wapi.dev'
 ```
 
 The seed is idempotent. It creates:
@@ -30,6 +40,7 @@ The seed is idempotent. It creates:
 ```bash
 curl -sS http://localhost:3000/api/health | jq .
 curl -sS https://wapi.getouch.co/api/health | jq .
+curl -sS https://wapi-dev.getouch.co/api/health | jq .
 ```
 
 Expect: `{ "status": "ok", ... }`.
@@ -66,6 +77,13 @@ email, e.g. `[email protected]`:
 ## DB spot-checks
 
 ```sql
+-- must exist before /login works
+select to_regclass('public.users');
+select to_regclass('public.sessions');
+select to_regclass('public.tenants');
+select to_regclass('public.tenant_members');
+select to_regclass('public.tenant_settings');
+
 -- users
 select id, email, is_system_admin, created_at from users order by created_at desc;
 
@@ -99,6 +117,16 @@ pnpm lint               # informational
 - `TENANT_ROUTING_MODE=subdomain` is wired but not enabled; we use `path` until we pay for Cloudflare ACM.
 
 ## Troubleshooting
+
+- **`Application error` on `/login` with digest / Postgres `42P01`** → the
+  Phase 2 migration was not applied to that database yet. Run:
+
+  ```bash
+  psql "$DATABASE_URL" -f drizzle/0000_parallel_mole_man.sql
+  pnpm db:seed [email protected]
+  ```
+
+  Then restart/redeploy the app.
 
 - **Redirect loop on `/dashboard`** → `SESSION_SECRET` mismatch between
   Next.js server processes. Restart the app after setting it.

@@ -153,6 +153,83 @@ async function main() {
     console.log("  · skipped system ai_provider_configs (no DIFY_DEFAULT_BASE_URL)");
   }
 
+  // 6) business profile (completed, so dashboard skips onboarding)
+  const profile = (
+    await db
+      .select()
+      .from(schema.tenantBusinessProfiles)
+      .where(eq(schema.tenantBusinessProfiles.tenantId, tenant.id))
+      .limit(1)
+  )[0];
+  if (!profile) {
+    await db.insert(schema.tenantBusinessProfiles).values({
+      tenantId: tenant.id,
+      businessNature: "hybrid",
+      industry: "Beauty salon",
+      defaultCurrency: "MYR",
+      defaultLanguage: "en",
+      timezone: "Asia/Kuala_Lumpur",
+      primaryCountry: "MY",
+      primaryPhone: "+60123456789",
+      supportEmail: "[email protected]",
+      websiteUrl: "https://demo.local",
+      brandVoice: "Friendly, concise, uses English mixed with casual Malay.",
+      onboardingCompletedAt: new Date(),
+    });
+    console.log("  ✓ created tenant_business_profiles (onboarded)");
+  } else {
+    console.log("  • tenant_business_profiles exists");
+  }
+
+  // 7) sample product + service (so the UI has something to render)
+  const haveProduct = (
+    await db
+      .select()
+      .from(schema.products)
+      .where(eq(schema.products.tenantId, tenant.id))
+      .limit(1)
+  )[0];
+  if (!haveProduct) {
+    await db.insert(schema.products).values({
+      tenantId: tenant.id,
+      productCode: "SKU-001",
+      name: "Hair Serum 50ml",
+      shortDescription: "Demo product so the UI has a row.",
+      productType: "physical",
+      status: "active",
+      unitOfMeasure: "bottle",
+      defaultPrice: "49.00",
+      currency: "MYR",
+    });
+    console.log("  ✓ created sample product SKU-001");
+  } else {
+    console.log("  • products already seeded");
+  }
+
+  const haveService = (
+    await db
+      .select()
+      .from(schema.services)
+      .where(eq(schema.services.tenantId, tenant.id))
+      .limit(1)
+  )[0];
+  if (!haveService) {
+    await db.insert(schema.services).values({
+      tenantId: tenant.id,
+      serviceCode: "SVC-001",
+      name: "Hair Wash & Blow",
+      shortDescription: "Demo service so the UI has a row.",
+      serviceType: "appointment",
+      durationMinutes: 45,
+      defaultPrice: "35.00",
+      currency: "MYR",
+      requiresBooking: true,
+    });
+    console.log("  ✓ created sample service SVC-001");
+  } else {
+    console.log("  • services already seeded");
+  }
+
   await pool.end();
   console.log("✔ seed complete");
 }
