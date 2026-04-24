@@ -63,7 +63,7 @@ export async function sendOtpViaProvider(input: {
       if (!res.ok) {
         const body = await res.text().catch(() => "");
         return {
-          ok: false,
+          ok: devFallback,
           providerMessageId: null,
           error: `Gateway responded ${res.status}: ${body.slice(0, 200)}`,
           debugCode: devFallback ? input.code : undefined,
@@ -87,7 +87,7 @@ export async function sendOtpViaProvider(input: {
       };
     } catch (err) {
       return {
-        ok: false,
+        ok: devFallback,
         providerMessageId: null,
         error: err instanceof Error ? err.message : String(err),
         debugCode: devFallback ? input.code : undefined,
