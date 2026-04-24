@@ -1,0 +1,25 @@
+# deps
+node_modules
+.pnpm-store
+
+# next
+.next
+out
+next-env.d.ts.bak
+
+# envs
+.env
+.env.local
+.env.*.local
+
+# system
+.DS_Store
+*.log
+
+# build artifacts
+dist
+build
+coverage
+
+# misc
+*.tsbuildinfo
