@@ -8,7 +8,15 @@ import { Logo } from "@/components/layout/logo";
 import { nav, hero } from "@/config/marketing";
 import { cn } from "@/lib/utils";
 
-export function Navbar() {
+export type NavbarUser = { email: string; name: string | null } | null;
+
+export function Navbar({
+  user = null,
+  showMarketingLinks = true,
+}: {
+  user?: NavbarUser;
+  showMarketingLinks?: boolean;
+}) {
   const [open, setOpen] = useState(false);
 
   return (
@@ -16,25 +24,40 @@ export function Navbar() {
       <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
         <Logo />
 
-        <nav className="hidden items-center gap-8 md:flex">
-          {nav.primary.map((item) => (
-            <Link
-              key={item.href}
-              href={item.href}
-              className="text-sm text-[var(--muted-foreground)] transition-colors hover:text-[var(--foreground)]"
-            >
-              {item.label}
-            </Link>
-          ))}
-        </nav>
+        {showMarketingLinks && (
+          <nav className="hidden items-center gap-8 md:flex">
+            {nav.primary.map((item) => (
+              <Link
+                key={item.href}
+                href={item.href}
+                className="text-sm text-[var(--muted-foreground)] transition-colors hover:text-[var(--foreground)]"
+              >
+                {item.label}
+              </Link>
+            ))}
+          </nav>
+        )}
 
         <div className="hidden items-center gap-3 md:flex">
-          <Button asChild variant="ghost" size="sm">
-            <Link href="/login">Sign in</Link>
-          </Button>
-          <Button asChild size="sm">
-            <Link href={hero.primaryCta.href}>{hero.primaryCta.label}</Link>
-          </Button>
+          {user ? (
+            <>
+              <span className="hidden text-xs text-[var(--muted-foreground)] lg:inline">
+                {user.email}
+              </span>
+              <Button asChild variant="ghost" size="sm">
+                <Link href="/dashboard">Dashboard</Link>
+              </Button>
+            </>
+          ) : (
+            <>
+              <Button asChild variant="ghost" size="sm">
+                <Link href="/login">Sign in</Link>
+              </Button>
+              <Button asChild size="sm">
+                <Link href={hero.primaryCta.href}>{hero.primaryCta.label}</Link>
+              </Button>
+            </>
+          )}
         </div>
 
         <button
@@ -54,23 +77,32 @@ export function Navbar() {
         )}
       >
         <div className="mx-auto flex max-w-7xl flex-col gap-1 px-4 py-3 sm:px-6">
-          {nav.primary.map((item) => (
-            <Link
-              key={item.href}
-              href={item.href}
-              onClick={() => setOpen(false)}
-              className="rounded-md px-3 py-2 text-sm text-[var(--muted-foreground)] hover:bg-[var(--accent)] hover:text-[var(--foreground)]"
-            >
-              {item.label}
-            </Link>
-          ))}
+          {showMarketingLinks &&
+            nav.primary.map((item) => (
+              <Link
+                key={item.href}
+                href={item.href}
+                onClick={() => setOpen(false)}
+                className="rounded-md px-3 py-2 text-sm text-[var(--muted-foreground)] hover:bg-[var(--accent)] hover:text-[var(--foreground)]"
+              >
+                {item.label}
+              </Link>
+            ))}
           <div className="mt-2 flex gap-2">
-            <Button asChild variant="outline" size="sm" className="flex-1">
-              <Link href="/login">Sign in</Link>
-            </Button>
-            <Button asChild size="sm" className="flex-1">
-              <Link href={hero.primaryCta.href}>{hero.primaryCta.label}</Link>
-            </Button>
+            {user ? (
+              <Button asChild size="sm" className="flex-1">
+                <Link href="/dashboard">Dashboard</Link>
+              </Button>
+            ) : (
+              <>
+                <Button asChild variant="outline" size="sm" className="flex-1">
+                  <Link href="/login">Sign in</Link>
+                </Button>
+                <Button asChild size="sm" className="flex-1">
+                  <Link href={hero.primaryCta.href}>{hero.primaryCta.label}</Link>
+                </Button>
+              </>
+            )}
           </div>
         </div>
       </div>

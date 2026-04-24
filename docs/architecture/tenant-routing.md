@@ -43,10 +43,17 @@ Certain hostnames/paths must **never** be treated as tenants:
 
 This list lives in `src/config/tenants.ts` (to be added in Phase 2).
 
-## Recommendation
+## Recommendation (locked for MVP)
 
-**Start Phase 2 with path-based.** Keep the middleware abstraction clean.
-Flip to subdomain once Cloudflare ACM + DNS wildcard is live.
+**Path-based, no ACM.** We explicitly decided not to buy Cloudflare
+Advanced Certificate Manager (~USD 10/month) for MVP validation.
+Universal SSL covers `*.getouch.co` (so `wapi.getouch.co` works for
+free) but does **not** cover `*.wapi.getouch.co`. Until we are paying
+for ACM — or wire up DNS-01 Let's Encrypt — every tenant lives at
+`wapi.getouch.co/t/{slug}`.
+
+The flip to subdomain is a one-liner env change
+(`TENANT_ROUTING_MODE=subdomain`) plus ACM/DNS work. No app code change.
 
 ## Why not start with subdomain?
 

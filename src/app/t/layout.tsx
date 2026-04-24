@@ -1,16 +1,21 @@
+import { redirect } from "next/navigation";
+import { getCurrentUser } from "@/server/auth";
 import { Navbar } from "@/components/layout/navbar";
 import { Footer } from "@/components/layout/footer";
-import { getCurrentUser } from "@/server/auth";
 
-export default async function MarketingLayout({
+export default async function TenantRootLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
   const user = await getCurrentUser().catch(() => null);
+  if (!user) redirect("/login");
   return (
     <div className="flex min-h-dvh flex-col">
-      <Navbar user={user ? { email: user.email, name: user.name } : null} />
+      <Navbar
+        user={{ email: user.email, name: user.name }}
+        showMarketingLinks={false}
+      />
       <main className="flex-1">{children}</main>
       <Footer />
     </div>

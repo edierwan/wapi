@@ -1,9 +1,12 @@
 import Link from "next/link";
+import { redirect } from "next/navigation";
 import type { Metadata } from "next";
 import { ArrowLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Logo } from "@/components/layout/logo";
 import { appConfig } from "@/config/app";
+import { getCurrentUser } from "@/server/auth";
+import { signInAction } from "./actions";
 
 export const metadata: Metadata = {
   title: "Sign in",
@@ -11,7 +14,12 @@ export const metadata: Metadata = {
   robots: { index: false, follow: false },
 };
 
-export default function LoginPage() {
+export const dynamic = "force-dynamic";
+
+export default async function LoginPage() {
+  const me = await getCurrentUser().catch(() => null);
+  if (me) redirect("/dashboard");
+
   return (
     <div className="relative grid min-h-dvh place-items-center px-4 py-10">
       <div
@@ -38,7 +46,7 @@ export default function LoginPage() {
             Sign in to your {appConfig.name} workspace.
           </p>
 
-          <form className="mt-6 space-y-4">
+          <form action={signInAction} className="mt-6 space-y-4">
             <div>
               <label htmlFor="email" className="text-sm font-medium">
                 Email
@@ -47,46 +55,45 @@ export default function LoginPage() {
                 id="email"
                 name="email"
                 type="email"
+                required
                 autoComplete="email"
                 placeholder="you@company.com"
                 className="mt-1.5 block h-10 w-full rounded-md border border-[var(--input)] bg-[var(--background)] px-3 text-sm outline-none placeholder:text-[var(--muted-foreground)]/70 focus:ring-2 focus:ring-[var(--ring)]"
-                disabled
               />
             </div>
             <div>
-              <label htmlFor="password" className="text-sm font-medium">
-                Password
+              <label htmlFor="name" className="text-sm font-medium">
+                Name <span className="text-xs text-[var(--muted-foreground)]">(optional)</span>
               </label>
               <input
-                id="password"
-                name="password"
-                type="password"
-                autoComplete="current-password"
-                placeholder="••••••••"
+                id="name"
+                name="name"
+                type="text"
+                autoComplete="name"
+                placeholder="Ada Lovelace"
                 className="mt-1.5 block h-10 w-full rounded-md border border-[var(--input)] bg-[var(--background)] px-3 text-sm outline-none placeholder:text-[var(--muted-foreground)]/70 focus:ring-2 focus:ring-[var(--ring)]"
-                disabled
               />
             </div>
 
-            <Button type="button" className="w-full" disabled>
-              Sign in (coming soon)
+            <Button type="submit" className="w-full">
+              Continue
             </Button>
 
             <p className="text-center text-xs text-[var(--muted-foreground)]">
-              Auth lands in Phase 2. This is a placeholder screen.
+              MVP sign-in: email only. Better Auth (password, OAuth, magic
+              link) arrives in Phase 2.
             </p>
           </form>
         </div>
 
         <p className="mt-6 text-center text-xs text-[var(--muted-foreground)]">
-          Don&apos;t have an account?{" "}
+          Need help?{" "}
           <a
             href={`mailto:${appConfig.support.email}`}
             className="text-[var(--foreground)] hover:underline"
           >
-            Contact us
+            {appConfig.support.email}
           </a>
-          .
         </p>
       </div>
     </div>
