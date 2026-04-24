@@ -46,11 +46,11 @@ export async function sendOtpViaProvider(input: {
 
     const secret = process.env.WA_GATEWAY_SECRET || "";
     try {
-      const res = await fetch(`${base.replace(/\/$/, "")}/send`, {
+      const res = await fetch(`${base.replace(/\/$/, "")}/api/send-text`, {
         method: "POST",
         headers: {
           "content-type": "application/json",
-          ...(secret ? { "x-wapi-secret": secret } : {}),
+          ...(secret ? { "x-api-key": secret } : {}),
         },
         body: JSON.stringify({
           to: input.phone,
