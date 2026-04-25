@@ -23,7 +23,7 @@ Everything after is post-MVP.
 	- AI Readiness card on the tenant overview with components, recommendations, and `Recompute & save` action
 	- minimal product / service create flow on `/t/{slug}/products` and `/t/{slug}/services`
 - Phase 5 remaining work for later tranches: CSV import, MinIO media uploads, full wizard steps 3–7
-- Phase 6 schema foundation is shipped, but gateway integration and WAPI worker/UI are still pending.
+- Phase 6 contract-ready WAPI surface is shipped (gateway client wrapper, HMAC-verified webhook receivers, `whatsapp_sessions` lifecycle, owner/admin connect UI, outbound worker skeleton, Dify provider resolution, secret resolver, Dify client, tenant-scoped context assembly, manual HITL draft action). Live gateway behavior is still gated on [Request 05](../request/05-wa-gateway-multitenancy.md).
 - Phase 7 schema foundation is shipped, but campaign UI and queue-driven behavior are still pending.
 
 This distinction matters:
@@ -123,17 +123,34 @@ Already shipped in this phase:
 	- `message_queue`
 	- `inbound_messages`
 - WAPI still uses the gateway for OTP delivery
+- Dify multi-tenant schema foundation already exists from earlier phases:
+	- `ai_provider_configs`
+	- `tenant_ai_settings`
+- **WAPI-side Phase 6 contract-ready (shipped)**:
+	- `src/server/wa-gateway.ts` single server-only HTTP wrapper
+	- `src/server/whatsapp-sessions.ts` tenant-scoped session helpers
+	- `src/server/wa-webhook-verify.ts` HMAC SHA256 timing-safe verification
+	- `/api/wa/webhooks/{qr,connected,disconnected,inbound,status}` receivers
+	- `/t/{slug}/whatsapp` connect / reset / disconnect UI (owner/admin only)
+	- `scripts/worker-outbound.ts` outbound worker skeleton (manual run only; not yet long-running in production)
+- **Dify runtime foundation (shipped)**:
+	- `src/server/ai-providers.ts` provider resolution (tenant_ai_settings → tenant default → global default), with cross-tenant guard
+	- `apiKeyRef` indirection resolver (`env:NAME` always; `literal:` dev-only, refused in production)
+	- `src/server/dify-client.ts` minimal `chat-messages` wrapper + namespaced conversation key builder (refuses bare-phone keys)
+	- `src/server/ai-context.ts` tenant-scoped context assembly from business profile, products, services, business memory, contact stats
+	- `/t/{slug}/ai/draft` manual HITL draft assistant — reads tenant context, calls Dify, returns a draft, never persists
 
 Still pending to complete the functional Phase 6 tranche:
 
-- Consume `wa.getouch.co` per [request #05](../request/05-wa-gateway-multitenancy.md)
-- QR connect flow, session health
+- Consume `wa.getouch.co` per [request #05](../request/05-wa-gateway-multitenancy.md) (live gateway behavior)
 - Test-send from UI (single recipient)
-- `whatsapp_sessions` lifecycle wired
-- WAPI gateway client wrapper
-- gateway webhook receivers
-- outbound queue worker
-- tenant WhatsApp connection UI wired to session state
+- Long-running outbound worker process (current code is a skeleton)
+
+Important guardrail for this phase:
+
+- shared Dify is acceptable for MVP only if WAPI remains the tenancy boundary
+- tenant resolution must come from WAPI ownership (`tenant_id`, account, session, contact), not from Dify
+- tenant-dedicated Dify stays a later upgrade path
 
 ## Phase 7 — Campaign composer + AI draft + Safety Assistant + queue send ◐
 
