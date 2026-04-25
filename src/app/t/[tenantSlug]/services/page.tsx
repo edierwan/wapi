@@ -12,8 +12,19 @@ import {
 import { TenantSubNav } from "@/components/tenant/sub-nav";
 import { requireTenantContext } from "@/server/tenant-guard";
 import { getDb, schema } from "@/db/client";
+import { createServiceAction } from "../_catalog-actions";
 
 export const dynamic = "force-dynamic";
+
+const SERVICE_TYPES = [
+  "consultation",
+  "appointment",
+  "package",
+  "subscription",
+  "repair",
+  "delivery",
+  "other",
+] as const;
 
 export default async function ServicesPage({
   params,
@@ -28,25 +39,134 @@ export default async function ServicesPage({
         .select()
         .from(schema.services)
         .where(eq(schema.services.tenantId, ctx.tenant.id))
-        .limit(50)
+        .limit(100)
     : [];
+
+  const canWrite = ["owner", "admin"].includes(ctx.currentUserRole ?? "");
 
   return (
     <section className="mx-auto max-w-6xl px-4 py-12 sm:px-6 lg:px-8">
       <TenantSubNav slug={ctx.tenant.slug} active="Services" />
 
-      <div className="mb-6 flex flex-wrap items-start justify-between gap-3">
-        <div>
-          <h1 className="text-2xl font-semibold tracking-tight">Services</h1>
-          <p className="mt-1 text-sm text-[var(--muted-foreground)]">
-            Appointments, consultations, repairs, subscription packages. Each
-            row can carry duration, booking, and deposit requirements.
-          </p>
-        </div>
-        <Button disabled title="Service editor ships in Phase 4">
-          <Plus className="size-4" /> Add service
-        </Button>
+      <div className="mb-6">
+        <h1 className="text-2xl font-semibold tracking-tight">Services</h1>
+        <p className="mt-1 text-sm text-[var(--muted-foreground)]">
+          Appointments, consultations, repairs, subscription packages.
+          Each row can carry duration and booking requirements.
+        </p>
       </div>
+
+      <Card className="mb-8">
+        <CardHeader>
+          <CardTitle className="text-base">Add service</CardTitle>
+          <CardDescription>
+            Minimal create flow. Packages and availability slots ship later.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <form action={createServiceAction} className="grid gap-3 sm:grid-cols-3">
+            <input type="hidden" name="tenantSlug" value={ctx.tenant.slug} />
+            <label className="text-sm">
+              <span className="mb-1 block text-xs uppercase tracking-wide text-[var(--muted-foreground)]">
+                Code
+              </span>
+              <input
+                name="serviceCode"
+                required
+                placeholder="SVC-0001"
+                className="w-full rounded-md border border-[var(--border)] bg-[var(--background)] px-3 py-2 text-sm font-mono"
+              />
+            </label>
+            <label className="text-sm sm:col-span-2">
+              <span className="mb-1 block text-xs uppercase tracking-wide text-[var(--muted-foreground)]">
+                Name
+              </span>
+              <input
+                name="name"
+                required
+                className="w-full rounded-md border border-[var(--border)] bg-[var(--background)] px-3 py-2 text-sm"
+              />
+            </label>
+            <label className="text-sm sm:col-span-3">
+              <span className="mb-1 block text-xs uppercase tracking-wide text-[var(--muted-foreground)]">
+                Short description
+              </span>
+              <input
+                name="shortDescription"
+                className="w-full rounded-md border border-[var(--border)] bg-[var(--background)] px-3 py-2 text-sm"
+              />
+            </label>
+            <label className="text-sm">
+              <span className="mb-1 block text-xs uppercase tracking-wide text-[var(--muted-foreground)]">
+                Type
+              </span>
+              <select
+                name="serviceType"
+                defaultValue="consultation"
+                className="w-full rounded-md border border-[var(--border)] bg-[var(--background)] px-3 py-2 text-sm"
+              >
+                {SERVICE_TYPES.map((t) => (
+                  <option key={t} value={t}>
+                    {t}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label className="text-sm">
+              <span className="mb-1 block text-xs uppercase tracking-wide text-[var(--muted-foreground)]">
+                Duration (min)
+              </span>
+              <input
+                name="durationMinutes"
+                type="number"
+                min={0}
+                placeholder="30"
+                className="w-full rounded-md border border-[var(--border)] bg-[var(--background)] px-3 py-2 text-sm"
+              />
+            </label>
+            <label className="text-sm">
+              <span className="mb-1 block text-xs uppercase tracking-wide text-[var(--muted-foreground)]">
+                Default price
+              </span>
+              <input
+                name="defaultPrice"
+                inputMode="decimal"
+                placeholder="120.00"
+                className="w-full rounded-md border border-[var(--border)] bg-[var(--background)] px-3 py-2 text-sm"
+              />
+            </label>
+            <label className="text-sm">
+              <span className="mb-1 block text-xs uppercase tracking-wide text-[var(--muted-foreground)]">
+                Currency
+              </span>
+              <input
+                name="currency"
+                defaultValue={"MYR"}
+                maxLength={3}
+                className="w-full rounded-md border border-[var(--border)] bg-[var(--background)] px-3 py-2 text-sm uppercase"
+              />
+            </label>
+            <label className="text-sm flex items-center gap-2 sm:col-span-2">
+              <input
+                type="checkbox"
+                name="requiresBooking"
+                className="size-4"
+              />
+              <span>Requires booking</span>
+            </label>
+            <div className="sm:col-span-3">
+              <Button type="submit" disabled={!canWrite}>
+                <Plus className="size-4" /> Add service
+              </Button>
+              {!canWrite && (
+                <p className="mt-1 text-xs text-[var(--muted-foreground)]">
+                  Only owners/admins can add services.
+                </p>
+              )}
+            </div>
+          </form>
+        </CardContent>
+      </Card>
 
       {rows.length === 0 ? (
         <Card>
@@ -56,15 +176,10 @@ export default async function ServicesPage({
             </div>
             <CardTitle>No services yet</CardTitle>
             <CardDescription>
-              Phase 3 ships the schema (services, service_categories,
-              service_packages, service_package_items, service_availability).
-              Phase 4 ships the editor UI.
+              Add your first service above. AI will use it when customers ask
+              about availability or duration.
             </CardDescription>
           </CardHeader>
-          <CardContent className="text-sm text-[var(--muted-foreground)]">
-            You can seed rows via SQL for testing. AI and the future booking
-            module will read directly from these tables.
-          </CardContent>
         </Card>
       ) : (
         <div className="overflow-x-auto rounded-md border border-[var(--border)]">

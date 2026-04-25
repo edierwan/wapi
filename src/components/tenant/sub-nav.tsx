@@ -1,6 +1,7 @@
 import Link from "next/link";
 import {
   BarChart3,
+  Brain,
   Inbox,
   LayoutDashboard,
   MessagesSquare,
@@ -23,9 +24,10 @@ type Item = {
 const ITEMS: Item[] = [
   { href: (s) => `/t/${s}`, label: "Overview", Icon: LayoutDashboard },
   { href: (s) => `/t/${s}/whatsapp`, label: "WhatsApp", Icon: Smartphone },
-  { href: (s) => `/t/${s}/contacts`, label: "Contacts", Icon: Users, soon: true },
+  { href: (s) => `/t/${s}/contacts`, label: "Contacts", Icon: Users },
   { href: (s) => `/t/${s}/products`, label: "Products", Icon: Package },
   { href: (s) => `/t/${s}/services`, label: "Services", Icon: Wrench },
+  { href: (s) => `/t/${s}/brain`, label: "Brain", Icon: Brain },
   { href: (s) => `/t/${s}/campaigns`, label: "Campaigns", Icon: MessagesSquare, soon: true },
   { href: (s) => `/t/${s}/inbox`, label: "Inbox", Icon: Inbox, soon: true },
   { href: (s) => `/t/${s}/ai`, label: "AI", Icon: Sparkles, soon: true },
