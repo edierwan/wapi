@@ -395,6 +395,15 @@ export const tenantBusinessProfiles = pgTable(
     supportEmail: text("support_email"),
     websiteUrl: text("website_url"),
     brandVoice: text("brand_voice"),
+    // Phase 5 master-data references (nullable; enforced by app layer).
+    industryId: uuid("industry_id"),
+    countryId: uuid("country_id"),
+    currencyId: uuid("currency_id"),
+    languageId: uuid("language_id"),
+    timezoneId: uuid("timezone_id"),
+    businessNatureId: uuid("business_nature_id"),
+    brandVoiceId: uuid("brand_voice_id"),
+    brandVoiceCustom: text("brand_voice_custom"),
     prohibitedWords: jsonb("prohibited_words"),
     onboardingCompletedAt: timestamp("onboarding_completed_at", { withTimezone: true }),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
@@ -937,3 +946,512 @@ export const pendingRegistrations = pgTable(
 export type UserSystemRole = typeof userSystemRoles.$inferSelect;
 export type PhoneVerification = typeof phoneVerifications.$inferSelect;
 export type PendingRegistration = typeof pendingRegistrations.$inferSelect;
+
+/* ────────────────────────────────────────────────────────────── */
+/*  PHASE 5 — Master / reference data                              */
+/* ────────────────────────────────────────────────────────────── */
+
+export const refCountries = pgTable(
+  "ref_countries",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    iso2Code: text("iso2_code").notNull(),
+    iso3Code: text("iso3_code"),
+    name: text("name").notNull(),
+    phoneCountryCode: text("phone_country_code"),
+    defaultCurrencyCode: text("default_currency_code"),
+    defaultLanguageCode: text("default_language_code"),
+    defaultTimezone: text("default_timezone"),
+    status: text("status").notNull().default("active"),
+    sortOrder: integer("sort_order").notNull().default(0),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => ({
+    iso2Uq: uniqueIndex("ref_countries_iso2_uq").on(t.iso2Code),
+    byStatus: index("ref_countries_status_idx").on(t.status),
+  }),
+);
+
+export const refCurrencies = pgTable(
+  "ref_currencies",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    code: text("code").notNull(),
+    name: text("name").notNull(),
+    symbol: text("symbol"),
+    decimalPlaces: integer("decimal_places").notNull().default(2),
+    status: text("status").notNull().default("active"),
+    sortOrder: integer("sort_order").notNull().default(0),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => ({ codeUq: uniqueIndex("ref_currencies_code_uq").on(t.code) }),
+);
+
+export const refLanguages = pgTable(
+  "ref_languages",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    code: text("code").notNull(),
+    name: text("name").notNull(),
+    nativeName: text("native_name"),
+    status: text("status").notNull().default("active"),
+    sortOrder: integer("sort_order").notNull().default(0),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => ({ codeUq: uniqueIndex("ref_languages_code_uq").on(t.code) }),
+);
+
+export const refTimezones = pgTable(
+  "ref_timezones",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    name: text("name").notNull(),
+    label: text("label").notNull(),
+    utcOffset: text("utc_offset"),
+    countryId: uuid("country_id").references(() => refCountries.id, {
+      onDelete: "set null",
+    }),
+    status: text("status").notNull().default("active"),
+    sortOrder: integer("sort_order").notNull().default(0),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => ({ nameUq: uniqueIndex("ref_timezones_name_uq").on(t.name) }),
+);
+
+export const refIndustries = pgTable(
+  "ref_industries",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    code: text("code").notNull(),
+    name: text("name").notNull(),
+    description: text("description"),
+    parentId: uuid("parent_id"),
+    status: text("status").notNull().default("active"),
+    sortOrder: integer("sort_order").notNull().default(0),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => ({ codeUq: uniqueIndex("ref_industries_code_uq").on(t.code) }),
+);
+
+export const refBusinessNatures = pgTable(
+  "ref_business_natures",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    code: text("code").notNull(),
+    name: text("name").notNull(),
+    description: text("description"),
+    status: text("status").notNull().default("active"),
+    sortOrder: integer("sort_order").notNull().default(0),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => ({ codeUq: uniqueIndex("ref_business_natures_code_uq").on(t.code) }),
+);
+
+export const refBrandVoices = pgTable(
+  "ref_brand_voices",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    code: text("code").notNull(),
+    name: text("name").notNull(),
+    description: text("description"),
+    promptInstruction: text("prompt_instruction"),
+    status: text("status").notNull().default("active"),
+    sortOrder: integer("sort_order").notNull().default(0),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => ({ codeUq: uniqueIndex("ref_brand_voices_code_uq").on(t.code) }),
+);
+
+/* ────────────────────────────────────────────────────────────── */
+/*  PHASE 5 — Contacts + Business Memory + AI Readiness            */
+/* ────────────────────────────────────────────────────────────── */
+
+export const contacts = pgTable(
+  "contacts",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    tenantId: uuid("tenant_id")
+      .notNull()
+      .references(() => tenants.id, { onDelete: "cascade" }),
+    phoneE164: text("phone_e164").notNull(),
+    fullName: text("full_name"),
+    email: text("email"),
+    languageId: uuid("language_id").references(() => refLanguages.id, {
+      onDelete: "set null",
+    }),
+    countryId: uuid("country_id").references(() => refCountries.id, {
+      onDelete: "set null",
+    }),
+    source: text("source"), // import | wa_inbound | manual | api | landing
+    status: text("status").notNull().default("active"), // active | unsubscribed | blocked | bounced
+    optInAt: timestamp("opt_in_at", { withTimezone: true }),
+    optOutAt: timestamp("opt_out_at", { withTimezone: true }),
+    lastSeenAt: timestamp("last_seen_at", { withTimezone: true }),
+    leadScore: integer("lead_score").notNull().default(0),
+    leadStatus: text("lead_status").notNull().default("none"), // none | new | warm | hot | customer
+    notes: text("notes"),
+    metadata: jsonb("metadata"),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => ({
+    tenantPhoneUq: uniqueIndex("contacts_tenant_phone_uq").on(
+      t.tenantId,
+      t.phoneE164,
+    ),
+    byTenant: index("contacts_tenant_idx").on(t.tenantId),
+    byLeadStatus: index("contacts_lead_status_idx").on(
+      t.tenantId,
+      t.leadStatus,
+    ),
+  }),
+);
+
+export const contactTags = pgTable(
+  "contact_tags",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    tenantId: uuid("tenant_id")
+      .notNull()
+      .references(() => tenants.id, { onDelete: "cascade" }),
+    name: text("name").notNull(),
+    color: text("color"),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => ({
+    tenantNameUq: uniqueIndex("contact_tags_tenant_name_uq").on(
+      t.tenantId,
+      t.name,
+    ),
+  }),
+);
+
+export const contactTagAssignments = pgTable(
+  "contact_tag_assignments",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    contactId: uuid("contact_id")
+      .notNull()
+      .references(() => contacts.id, { onDelete: "cascade" }),
+    tagId: uuid("tag_id")
+      .notNull()
+      .references(() => contactTags.id, { onDelete: "cascade" }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => ({
+    pairUq: uniqueIndex("contact_tag_assignments_pair_uq").on(
+      t.contactId,
+      t.tagId,
+    ),
+  }),
+);
+
+export const contactConsents = pgTable(
+  "contact_consents",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    contactId: uuid("contact_id")
+      .notNull()
+      .references(() => contacts.id, { onDelete: "cascade" }),
+    channel: text("channel").notNull(), // whatsapp | email | sms
+    consentType: text("consent_type").notNull(), // marketing | transactional | ai_followup
+    granted: boolean("granted").notNull(),
+    source: text("source"), // form | inbound_message | import | manual
+    evidenceText: text("evidence_text"),
+    grantedAt: timestamp("granted_at", { withTimezone: true }),
+    revokedAt: timestamp("revoked_at", { withTimezone: true }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => ({ byContact: index("contact_consents_contact_idx").on(t.contactId) }),
+);
+
+export const businessMemoryItems = pgTable(
+  "business_memory_items",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    tenantId: uuid("tenant_id")
+      .notNull()
+      .references(() => tenants.id, { onDelete: "cascade" }),
+    kind: text("kind").notNull(), // fact | faq | policy | brand | offer | warning
+    title: text("title").notNull(),
+    body: text("body").notNull(),
+    source: text("source").notNull().default("manual"), // manual | import | onboarding | inferred
+    weight: integer("weight").notNull().default(1),
+    status: text("status").notNull().default("active"),
+    embedding: jsonb("embedding"), // store vector json until pgvector enabled
+    metadata: jsonb("metadata"),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => ({
+    byTenant: index("business_memory_items_tenant_idx").on(t.tenantId),
+    byKind: index("business_memory_items_kind_idx").on(t.tenantId, t.kind),
+  }),
+);
+
+export const aiReadinessScores = pgTable(
+  "ai_readiness_scores",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    tenantId: uuid("tenant_id")
+      .notNull()
+      .references(() => tenants.id, { onDelete: "cascade" }),
+    overallScore: integer("overall_score").notNull().default(0), // 0-100
+    bandLabel: text("band_label").notNull().default("not_ready"), // not_ready | basic | good | excellent
+    components: jsonb("components"), // { businessProfile: 80, products: 60, ... }
+    recommendations: jsonb("recommendations"), // [{code, title, weight}]
+    computedAt: timestamp("computed_at", { withTimezone: true }).notNull().defaultNow(),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => ({ byTenant: index("ai_readiness_scores_tenant_idx").on(t.tenantId) }),
+);
+
+/* ────────────────────────────────────────────────────────────── */
+/*  PHASE 6 — WhatsApp gateway: outbound queue + inbound events    */
+/* ────────────────────────────────────────────────────────────── */
+
+export const messageQueue = pgTable(
+  "message_queue",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    tenantId: uuid("tenant_id")
+      .notNull()
+      .references(() => tenants.id, { onDelete: "cascade" }),
+    accountId: uuid("account_id").references(() => connectedAccounts.id, {
+      onDelete: "set null",
+    }),
+    contactId: uuid("contact_id").references(() => contacts.id, {
+      onDelete: "set null",
+    }),
+    campaignId: uuid("campaign_id"),
+    toPhone: text("to_phone").notNull(),
+    purpose: text("purpose").notNull().default("campaign"), // campaign | reply | otp | followup | broadcast | system
+    status: text("status").notNull().default("queued"), // queued | sending | sent | delivered | read | failed | cancelled
+    bodyText: text("body_text"),
+    payload: jsonb("payload"), // attachments / template
+    attempts: integer("attempts").notNull().default(0),
+    maxAttempts: integer("max_attempts").notNull().default(3),
+    scheduledAt: timestamp("scheduled_at", { withTimezone: true }).notNull().defaultNow(),
+    sentAt: timestamp("sent_at", { withTimezone: true }),
+    deliveredAt: timestamp("delivered_at", { withTimezone: true }),
+    readAt: timestamp("read_at", { withTimezone: true }),
+    failedAt: timestamp("failed_at", { withTimezone: true }),
+    failureReason: text("failure_reason"),
+    providerMessageId: text("provider_message_id"),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => ({
+    byTenant: index("message_queue_tenant_idx").on(t.tenantId),
+    byStatus: index("message_queue_status_idx").on(t.status, t.scheduledAt),
+    byCampaign: index("message_queue_campaign_idx").on(t.campaignId),
+  }),
+);
+
+export const inboundMessages = pgTable(
+  "inbound_messages",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    tenantId: uuid("tenant_id")
+      .notNull()
+      .references(() => tenants.id, { onDelete: "cascade" }),
+    accountId: uuid("account_id").references(() => connectedAccounts.id, {
+      onDelete: "set null",
+    }),
+    contactId: uuid("contact_id").references(() => contacts.id, {
+      onDelete: "set null",
+    }),
+    fromPhone: text("from_phone").notNull(),
+    bodyText: text("body_text"),
+    payload: jsonb("payload"),
+    providerMessageId: text("provider_message_id"),
+    receivedAt: timestamp("received_at", { withTimezone: true }).notNull().defaultNow(),
+    intent: text("intent"), // ai-classified: question | buying | objection | greeting | optout | other
+    sentiment: text("sentiment"), // positive | neutral | negative
+    handledByAi: boolean("handled_by_ai").notNull().default(false),
+    aiReplyMessageId: uuid("ai_reply_message_id"),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => ({
+    byTenant: index("inbound_messages_tenant_idx").on(t.tenantId),
+    byContact: index("inbound_messages_contact_idx").on(t.contactId),
+    byIntent: index("inbound_messages_intent_idx").on(t.tenantId, t.intent),
+  }),
+);
+
+/* ────────────────────────────────────────────────────────────── */
+/*  PHASE 7 — Campaigns + Variations + Safety reviews              */
+/* ────────────────────────────────────────────────────────────── */
+
+export const campaigns = pgTable(
+  "campaigns",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    tenantId: uuid("tenant_id")
+      .notNull()
+      .references(() => tenants.id, { onDelete: "cascade" }),
+    name: text("name").notNull(),
+    objective: text("objective"), // promo | event | re_engage | survey | followup | other
+    status: text("status").notNull().default("draft"),
+    // draft | safety_review | scheduled | sending | paused | completed | cancelled | failed
+    sendMode: text("send_mode").notNull().default("standard"),
+    // standard | reply_first
+    audienceFilter: jsonb("audience_filter"), // {tags: [], leadStatus: [], languages: []}
+    estimatedRecipients: integer("estimated_recipients"),
+    excludedRecipients: integer("excluded_recipients"),
+    finalRecipients: integer("final_recipients"),
+    scheduledAt: timestamp("scheduled_at", { withTimezone: true }),
+    startedAt: timestamp("started_at", { withTimezone: true }),
+    completedAt: timestamp("completed_at", { withTimezone: true }),
+    createdByUserId: uuid("created_by_user_id").references(() => users.id, {
+      onDelete: "set null",
+    }),
+    metadata: jsonb("metadata"),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => ({
+    byTenant: index("campaigns_tenant_idx").on(t.tenantId),
+    byStatus: index("campaigns_status_idx").on(t.tenantId, t.status),
+  }),
+);
+
+export const campaignVariants = pgTable(
+  "campaign_variants",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    campaignId: uuid("campaign_id")
+      .notNull()
+      .references(() => campaigns.id, { onDelete: "cascade" }),
+    label: text("label").notNull().default("A"),
+    bodyText: text("body_text").notNull(),
+    languageCode: text("language_code"),
+    weight: integer("weight").notNull().default(1),
+    isAiGenerated: boolean("is_ai_generated").notNull().default(false),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => ({ byCampaign: index("campaign_variants_campaign_idx").on(t.campaignId) }),
+);
+
+export const campaignSafetyReviews = pgTable(
+  "campaign_safety_reviews",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    campaignId: uuid("campaign_id")
+      .notNull()
+      .references(() => campaigns.id, { onDelete: "cascade" }),
+    overallStatus: text("overall_status").notNull().default("pending"),
+    // pending | good | needs_review | high_risk
+    checks: jsonb("checks"), // [{code, status, message, autoFixable}]
+    autoFixesApplied: jsonb("auto_fixes_applied"),
+    summaryText: text("summary_text"),
+    reviewedByUserId: uuid("reviewed_by_user_id").references(() => users.id, {
+      onDelete: "set null",
+    }),
+    reviewedAt: timestamp("reviewed_at", { withTimezone: true }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => ({
+    byCampaign: index("campaign_safety_reviews_campaign_idx").on(t.campaignId),
+  }),
+);
+
+export const campaignRecipients = pgTable(
+  "campaign_recipients",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    campaignId: uuid("campaign_id")
+      .notNull()
+      .references(() => campaigns.id, { onDelete: "cascade" }),
+    contactId: uuid("contact_id")
+      .notNull()
+      .references(() => contacts.id, { onDelete: "cascade" }),
+    variantId: uuid("variant_id").references(() => campaignVariants.id, {
+      onDelete: "set null",
+    }),
+    queueId: uuid("queue_id").references(() => messageQueue.id, {
+      onDelete: "set null",
+    }),
+    status: text("status").notNull().default("pending"),
+    // pending | sent | delivered | read | failed | replied | excluded
+    excludedReason: text("excluded_reason"),
+    repliedAt: timestamp("replied_at", { withTimezone: true }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => ({
+    byCampaign: index("campaign_recipients_campaign_idx").on(t.campaignId),
+    pairUq: uniqueIndex("campaign_recipients_pair_uq").on(
+      t.campaignId,
+      t.contactId,
+    ),
+  }),
+);
+
+export const followupSequences = pgTable(
+  "followup_sequences",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    tenantId: uuid("tenant_id")
+      .notNull()
+      .references(() => tenants.id, { onDelete: "cascade" }),
+    name: text("name").notNull(),
+    triggerType: text("trigger_type").notNull(), // no_reply | hot_lead | new_contact | custom
+    triggerConfig: jsonb("trigger_config"),
+    status: text("status").notNull().default("active"),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => ({ byTenant: index("followup_sequences_tenant_idx").on(t.tenantId) }),
+);
+
+export const followupSteps = pgTable(
+  "followup_steps",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    sequenceId: uuid("sequence_id")
+      .notNull()
+      .references(() => followupSequences.id, { onDelete: "cascade" }),
+    stepOrder: integer("step_order").notNull(),
+    delayHours: integer("delay_hours").notNull().default(24),
+    bodyText: text("body_text"),
+    isAiGenerated: boolean("is_ai_generated").notNull().default(false),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => ({
+    bySeq: index("followup_steps_sequence_idx").on(t.sequenceId),
+    seqOrderUq: uniqueIndex("followup_steps_seq_order_uq").on(
+      t.sequenceId,
+      t.stepOrder,
+    ),
+  }),
+);
+
+/* ── Phase 5/6/7 types ─────────────────────────────────────────── */
+
+export type RefCountry = typeof refCountries.$inferSelect;
+export type RefCurrency = typeof refCurrencies.$inferSelect;
+export type RefLanguage = typeof refLanguages.$inferSelect;
+export type RefTimezone = typeof refTimezones.$inferSelect;
+export type RefIndustry = typeof refIndustries.$inferSelect;
+export type RefBusinessNature = typeof refBusinessNatures.$inferSelect;
+export type RefBrandVoice = typeof refBrandVoices.$inferSelect;
+export type Contact = typeof contacts.$inferSelect;
+export type ContactTag = typeof contactTags.$inferSelect;
+export type BusinessMemoryItem = typeof businessMemoryItems.$inferSelect;
+export type AiReadinessScore = typeof aiReadinessScores.$inferSelect;
+export type MessageQueueRow = typeof messageQueue.$inferSelect;
+export type InboundMessage = typeof inboundMessages.$inferSelect;
+export type Campaign = typeof campaigns.$inferSelect;
+export type CampaignVariant = typeof campaignVariants.$inferSelect;
+export type CampaignSafetyReview = typeof campaignSafetyReviews.$inferSelect;
+export type CampaignRecipient = typeof campaignRecipients.$inferSelect;
+export type FollowupSequence = typeof followupSequences.$inferSelect;
+export type FollowupStep = typeof followupSteps.$inferSelect;

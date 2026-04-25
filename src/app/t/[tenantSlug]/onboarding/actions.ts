@@ -6,7 +6,10 @@ import { z } from "zod";
 import { getCurrentUser } from "@/server/auth";
 import { resolveTenantBySlug } from "@/server/tenant";
 import { upsertBusinessProfile } from "@/server/business-profile";
+import { validateActiveRefIds } from "@/server/reference-data";
 
+// Legacy enum kept for backward-compat with the existing
+// `tenant_business_profiles.business_nature` text column.
 const BusinessNatureEnum = z.enum([
   "product",
   "service",
@@ -16,6 +19,12 @@ const BusinessNatureEnum = z.enum([
   "support",
   "other",
 ]);
+
+const optionalUuid = z
+  .string()
+  .uuid()
+  .optional()
+  .or(z.literal("").transform(() => undefined));
 
 const schema = z.object({
   tenantSlug: z.string(),
@@ -29,6 +38,14 @@ const schema = z.object({
   supportEmail: z.string().email().optional().or(z.literal("")).default(""),
   websiteUrl: z.string().url().optional().or(z.literal("")).default(""),
   brandVoice: z.string().max(400).optional().default(""),
+  industryId: optionalUuid,
+  countryId: optionalUuid,
+  currencyId: optionalUuid,
+  languageId: optionalUuid,
+  timezoneId: optionalUuid,
+  businessNatureId: optionalUuid,
+  brandVoiceId: optionalUuid,
+  brandVoiceCustom: z.string().max(2000).optional().default(""),
   completeOnboarding: z.union([z.literal("1"), z.literal("0")]).optional(),
 });
 
@@ -39,7 +56,6 @@ export async function saveBusinessProfileAction(formData: FormData) {
   const raw = Object.fromEntries(formData.entries());
   const parsed = schema.safeParse(raw);
   if (!parsed.success) {
-    // Surface the first error — UI reloads with default values.
     const msg = parsed.error.issues[0]?.message ?? "Invalid input";
     throw new Error(msg);
   }
@@ -52,10 +68,21 @@ export async function saveBusinessProfileAction(formData: FormData) {
   if (!tenantRes.ok) {
     redirect("/dashboard");
   }
-
-  // Only owner/admin can edit business profile.
   if (!["owner", "admin"].includes(tenantRes.currentUserRole ?? "")) {
     redirect(`/t/${data.tenantSlug}`);
+  }
+
+  const v = await validateActiveRefIds({
+    countryId: data.countryId,
+    currencyId: data.currencyId,
+    languageId: data.languageId,
+    timezoneId: data.timezoneId,
+    industryId: data.industryId,
+    businessNatureId: data.businessNatureId,
+    brandVoiceId: data.brandVoiceId,
+  });
+  if (!v.ok) {
+    throw new Error(`Invalid reference IDs: ${v.invalid.join(", ")}`);
   }
 
   await upsertBusinessProfile({
@@ -70,6 +97,14 @@ export async function saveBusinessProfileAction(formData: FormData) {
     supportEmail: data.supportEmail || null,
     websiteUrl: data.websiteUrl || null,
     brandVoice: data.brandVoice || null,
+    industryId: data.industryId ?? null,
+    countryId: data.countryId ?? null,
+    currencyId: data.currencyId ?? null,
+    languageId: data.languageId ?? null,
+    timezoneId: data.timezoneId ?? null,
+    businessNatureId: data.businessNatureId ?? null,
+    brandVoiceId: data.brandVoiceId ?? null,
+    brandVoiceCustom: data.brandVoiceCustom || null,
     completeOnboarding: data.completeOnboarding === "1",
   });
 
