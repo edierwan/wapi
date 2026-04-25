@@ -30,7 +30,7 @@ const ITEMS: Item[] = [
   { href: (s) => `/t/${s}/brain`, label: "Brain", Icon: Brain },
   { href: (s) => `/t/${s}/campaigns`, label: "Campaigns", Icon: MessagesSquare, soon: true },
   { href: (s) => `/t/${s}/inbox`, label: "Inbox", Icon: Inbox, soon: true },
-  { href: (s) => `/t/${s}/ai`, label: "AI", Icon: Sparkles, soon: true },
+  { href: (s) => `/t/${s}/ai/draft`, label: "AI", Icon: Sparkles },
   { href: (s) => `/t/${s}/analytics`, label: "Analytics", Icon: BarChart3, soon: true },
   { href: (s) => `/t/${s}/settings/business`, label: "Settings", Icon: Settings },
 ];

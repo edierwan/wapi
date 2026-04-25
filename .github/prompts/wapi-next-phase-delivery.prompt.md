@@ -16,6 +16,7 @@ Read these files first before planning or changing code:
 
 - [docs/product/roadmap.md](../../docs/product/roadmap.md)
 - [docs/product/delivery-progress.md](../../docs/product/delivery-progress.md)
+- [docs/architecture/ai-dify.md](../../docs/architecture/ai-dify.md)
 - [docs/request/08-test-phase5.md](../../docs/request/08-test-phase5.md)
 - [docs/request/09-test-phase6.md](../../docs/request/09-test-phase6.md)
 - [docs/request/10-test-phase7.md](../../docs/request/10-test-phase7.md)
@@ -50,6 +51,11 @@ Read these files first before planning or changing code:
 - onboarding redesign is landed
 - contacts/business-memory/AI-readiness schema is landed
 - build and route surfaces are healthy
+- tenant UI tranche 1 is already shipped:
+   - contacts CRUD + tag assignment
+   - Business Brain CRUD
+   - AI Readiness card + recompute/save
+   - minimal product / service create flow
 
 ### Phase 6 foundation
 
@@ -75,8 +81,8 @@ Read these files first before planning or changing code:
 
 ### Actual pending work
 
-- Phase 5 functional tenant UI completion
 - Phase 6 WAPI-side gateway integration
+- Dify multi-tenant runtime foundation
 - Phase 7 campaign UI and worker-driven behavior
 - release hardening and operational close-out
 
@@ -84,53 +90,38 @@ Read these files first before planning or changing code:
 
 Follow this order unless the user explicitly changes priority:
 
-1. Finish the functional Phase 5 tranche.
-2. Prepare and implement the WAPI-side Phase 6 tranche.
-3. Implement the functional Phase 7 tranche.
-4. Keep full admin modules for a later dedicated tranche.
+1. Complete the remaining interactive validation for shipped Phase 5 tranche 1 where credentials or browser interaction are still needed.
+2. Implement the WAPI-side Phase 6 tranche.
+3. Implement the Dify multi-tenant runtime foundation in WAPI.
+4. Implement the functional Phase 7 tranche.
+5. Keep full admin modules for a later dedicated tranche.
 
 ## Required next tranche
 
-### Tranche 1 — complete functional Phase 5
+### Tranche 1 — close out Phase 5 validation only
 
 Goal:
 
-- turn the Phase 5 foundation into real tenant-facing capability
+- confirm the already shipped Phase 5 tenant tranche in interactive flows and document any real gaps
 
 Deliverables:
 
-1. Contacts UI
-   - list page
-   - create/manual add flow
-   - basic edit flow
-   - tags display and assignment support where realistic
-   - clear tenant scoping on all queries
-2. Business Brain UI
-   - CRUD for `business_memory_items`
-   - support at least the core kinds already modeled in schema
-   - clear save, edit, delete flows
-3. AI Readiness surface
-   - dashboard or tenant surface showing the current readiness snapshot
-   - sensible empty state if no score exists yet
-4. Product/service editor follow-through if still missing in the shipped tenant UI
-   - bind to existing schema
-   - avoid widening into media/upload work unless required for core completion
-5. Update docs and progress ledger after implementation and validation
+1. Run the remaining interactive checks from the latest Phase 5 test doc.
+2. Fix only defects actually found during that pass.
+3. Update docs and progress ledger with verified versus still-manual status.
 
 Acceptance bar for Tranche 1:
 
-- tenant-facing Phase 5 UI works in dev
-- tenant scoping is explicit in query paths
-- build and typecheck stay clean
-- progress and roadmap docs reflect what was actually shipped
+- shipped Phase 5 tranche 1 is either confirmed or any real defect is fixed
+- progress docs clearly separate automated versus interactive validation
 
-### Tranche 2 — WAPI-side Phase 6 integration
+### Tranche 2 — WAPI-side Phase 6 integration + Dify foundation
 
-Do this only after Tranche 1 is in a good state, unless the user explicitly wants gateway integration first.
+Do this after Tranche 1 validation unless the user explicitly reprioritizes.
 
 Goal:
 
-- make WAPI structurally ready to consume the future multi-session gateway contract
+- make WAPI structurally ready to consume the future multi-session gateway contract and establish the first tenant-safe Dify runtime layer
 
 Deliverables:
 
@@ -154,17 +145,34 @@ Deliverables:
 5. tenant WhatsApp UI
    - connect / QR / reset / disconnect state
    - server actions only for secret-bearing operations
-6. doc and progress updates
+6. Dify provider/runtime foundation
+   - provider resolution service using `tenant_ai_settings` and `ai_provider_configs`
+   - secret resolution by `api_key_ref`
+   - minimal Dify client wrapper
+   - tenant-scoped context assembly from WAPI data
+   - preserve WAPI as the tenancy boundary
+7. first AI-assisted surface
+   - one narrow manual flow only
+   - prefer Business Brain or tenant overview action over inbound auto-reply first
+   - human-in-the-loop only
+8. doc and progress updates
 
 Important constraint:
 
 - If Request 05 gateway behavior is still not delivered externally, implement only the WAPI-side contract-ready pieces that can be done safely without pretending end-to-end readiness exists.
+- Dify must be implemented as multi-tenant-safe from the first runtime slice.
+- Do not use a shared mixed-tenant dataset as the primary tenancy boundary.
+- Resolve tenant from WAPI records first, then call Dify with tenant-scoped context.
+- Do not use bare phone number as the sole conversation key.
 
 Acceptance bar for Tranche 2:
 
 - WAPI code structure is ready for multi-session gateway integration
 - no client exposure of gateway secret
 - queue and webhook flows are server-side
+- Dify provider resolution is tenant-aware
+- AI grounding uses only tenant-scoped WAPI data
+- shared Dify, if used, remains orchestration only and not the tenancy boundary
 - docs clearly state what is complete versus blocked by the external gateway
 
 ### Tranche 3 — functional Phase 7
@@ -215,6 +223,8 @@ As you work, maintain these delivery rules:
 2. Keep release hardening visible in the plan.
 3. Keep doc alignment current after every meaningful tranche.
 4. Do not mark WAPI WhatsApp readiness green while Request 05 remains externally blocked.
+5. Preserve multi-tenant Dify isolation: WAPI resolves tenant ownership first; Dify does not.
+6. Treat tenant-dedicated Dify as a later upgrade path, not the first implementation.
 
 ## Required documentation updates after each tranche
 
@@ -249,6 +259,8 @@ When a feature is interactive and cannot be fully verified automatically:
 - building full billing
 - building full admin modules by default
 - pretending the external gateway blocker is already solved
+- treating Dify as a cross-tenant shared memory store
+- implementing tenant-dedicated Dify infrastructure before the shared-runtime tenant-safe layer exists
 - large speculative refactors without user-facing delivery value
 
 ## Definition of success for the next round
