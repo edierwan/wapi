@@ -19,6 +19,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { TenantSubNav } from "@/components/tenant/sub-nav";
+import { ReadinessCard } from "@/components/tenant/readiness-card";
 import { requireTenantContext } from "@/server/tenant-guard";
 import { isOnboardingComplete } from "@/server/business-profile";
 
@@ -62,7 +63,6 @@ export default async function TenantWorkspacePage({
       description: "Import, tag, and segment your audience.",
       href: `/t/${tenant.slug}/contacts`,
       Icon: Users,
-      soon: true,
     },
     {
       title: "Campaigns",
@@ -128,6 +128,14 @@ export default async function TenantWorkspacePage({
         <Button asChild variant="outline" size="sm">
           <Link href="/dashboard">Switch workspace</Link>
         </Button>
+      </div>
+
+      <div className="mt-10">
+        <ReadinessCard
+          tenantId={tenant.id}
+          tenantSlug={tenant.slug}
+          canWrite={["owner", "admin", "agent"].includes(currentUserRole ?? "")}
+        />
       </div>
 
       <div className="mt-10 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
