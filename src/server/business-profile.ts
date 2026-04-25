@@ -36,6 +36,15 @@ export type UpsertBusinessProfileInput = {
   supportEmail?: string | null;
   websiteUrl?: string | null;
   brandVoice?: string | null;
+  // Phase 5 FK references to ref_* master tables.
+  industryId?: string | null;
+  countryId?: string | null;
+  currencyId?: string | null;
+  languageId?: string | null;
+  timezoneId?: string | null;
+  businessNatureId?: string | null;
+  brandVoiceId?: string | null;
+  brandVoiceCustom?: string | null;
   completeOnboarding?: boolean;
 };
 
@@ -54,6 +63,14 @@ export async function upsertBusinessProfile(input: UpsertBusinessProfileInput) {
     supportEmail: input.supportEmail ?? null,
     websiteUrl: input.websiteUrl ?? null,
     brandVoice: input.brandVoice ?? null,
+    industryId: input.industryId ?? null,
+    countryId: input.countryId ?? null,
+    currencyId: input.currencyId ?? null,
+    languageId: input.languageId ?? null,
+    timezoneId: input.timezoneId ?? null,
+    businessNatureId: input.businessNatureId ?? null,
+    brandVoiceId: input.brandVoiceId ?? null,
+    brandVoiceCustom: input.brandVoiceCustom ?? null,
     updatedAt: now,
     ...(input.completeOnboarding ? { onboardingCompletedAt: now } : {}),
   };

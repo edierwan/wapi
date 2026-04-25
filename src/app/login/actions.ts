@@ -6,6 +6,7 @@ import {
   signInWithPassword,
   signOut as authSignOut,
 } from "@/server/auth";
+import { userHasAnySystemRole } from "@/server/permissions";
 
 export type LoginState = { ok: boolean; error?: string };
 
@@ -17,18 +18,24 @@ export async function signInAction(
   const password = String(formData.get("password") ?? "");
   const name = String(formData.get("name") ?? "");
 
+  let userId: string;
   try {
     if (password) {
-      await signInWithPassword({ email, password });
+      const u = await signInWithPassword({ email, password });
+      userId = u.id;
     } else if (process.env.ENABLE_DEV_EMAIL_LOGIN === "true") {
-      await signInWithEmail({ email, name });
+      const u = await signInWithEmail({ email, name });
+      userId = u.id;
     } else {
       return { ok: false, error: "Please enter your password." };
     }
   } catch (err) {
     return { ok: false, error: err instanceof Error ? err.message : "Login failed." };
   }
-  redirect("/dashboard");
+
+  // System admins always land on /admin.
+  const isAdmin = await userHasAnySystemRole(userId).catch(() => false);
+  redirect(isAdmin ? "/admin" : "/dashboard");
 }
 
 export async function signOutAction() {
