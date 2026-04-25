@@ -46,7 +46,7 @@ export default async function OnboardingPage({
         <input type="hidden" name="completeOnboarding" value="1" />
 
         <OnboardingForm
-          ref={refData}
+          refData={refData}
           defaults={{
             countryId: existing?.countryId ?? null,
             currencyId: existing?.currencyId ?? null,
