@@ -6,7 +6,7 @@ import { Card, CardDescription, CardHeader, CardTitle } from "@/components/ui/ca
 import { Badge } from "@/components/ui/badge";
 import { getCurrentUser } from "@/server/auth";
 import { listUserTenants } from "@/server/tenant";
-import { userHasAnySystemRole } from "@/server/permissions";
+import { userHasSystemPermission } from "@/server/permissions";
 import { signOutAction } from "@/app/login/actions";
 
 export const dynamic = "force-dynamic";
@@ -16,7 +16,7 @@ export default async function DashboardPage() {
   if (!user) redirect("/login");
 
   // System admins go to /admin (they have no normal tenant flow).
-  if (await userHasAnySystemRole(user.id).catch(() => false)) {
+  if (await userHasSystemPermission(user.id, "system.admin.access").catch(() => false)) {
     redirect("/admin");
   }
 

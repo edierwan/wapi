@@ -4,32 +4,29 @@
 
 ## 2026-04-25 Live retest notes (`wapi-dev`)
 
-- Verified on deployed `wapi-dev` after re-running the seed against `wapi.dev`.
-- Confirmed healthy route: `/api/health` returns `200`.
-- Confirmed demo tenant renders for an authenticated owner:
-  - `/t/demo` returns `200`
-  - `/t/demo/products` shows `SKU-001 / Hair Serum 50ml / MYR 49.00 / active`
-  - `/t/demo/services` shows `SVC-001 / Hair Wash & Blow / 45 min / MYR 35.00 / booking required`
-  - `/t/demo/settings/business` shows business profile with `hybrid` and `Complete`
-  - `/t/demo/whatsapp` shows the empty state and `request #05`
-- Confirmed fresh tenant redirect:
-  - `/t/acme-phase3` redirects to `/t/acme-phase3/onboarding`
-  - onboarding page renders the expected sections and 7 business-nature radios
-- Confirmed database spot-checks on `wapi.dev`:
-  - `tenant_business_profiles = 1`
-  - `products(demo) = 1`
-  - `services(demo) = 1`
-  - `public` tables = `28`
-- Confirmed `wapi` also has `28` public tables.
+- Verified on deployed `wapi-dev` and `wapi` after fixing the edge proxy upstream drift and restarting `caddy`.
+- Confirmed healthy routes:
+  - `https://wapi-dev.getouch.co/api/health` returns `200`
+  - `https://wapi.getouch.co/api/health` returns `200`
+- Confirmed demo tenant rendering on `wapi-dev` in a real browser session as the seeded viewer:
+  - `/t/demo/products` shows `SKU-001`
+  - `/t/demo/services` shows `SVC-001`
+  - `/t/demo/settings/business` renders the business profile state
+  - `/t/demo/onboarding` redirects back to `/t/demo` for a non-owner
+- Confirmed fresh-tenant onboarding in a real browser session after a code fix:
+  - `/t/phase3china1777138295` redirects to `/t/phase3china1777138295/onboarding`
+  - submit now succeeds and redirects back to `/t/phase3china1777138295`
+  - DB spot-check confirms `onboarding_completed_at` is set and `business_nature='service'`
+- Root cause of the onboarding crash was identified and fixed in repo:
+  - `app/t/[tenantSlug]/onboarding/page.tsx` passed `ref={refData}` into a client component
+  - React/Next treats `ref` as a reserved prop, so server serialization failed with digest `2544332889`
+  - the prop was renamed to `refData` in both the page and `onboarding-form.tsx`
 - Seed reproducibility fix applied in repo:
   - `scripts/seed.ts` now loads `.env.local` explicitly for local `pnpm db:seed ...` runs
-  - `scripts/seed.ts` now seeds a dedicated `Demo Member` viewer account so the non-owner guard test is reproducible
-- Operational issue found during retest:
-  - public `wapi` / `wapi-dev` briefly returned `502` because the edge Caddyfile still pointed at old Coolify container names after a redeploy; fixed by updating the upstreams and restarting `caddy`
-- Remaining blocker before Phase 4 sign-off:
-  - a synthetic multipart POST to `/t/acme-phase3/onboarding` still returns `500`
-  - live app logs show: `cookies was called outside a request scope` from `app/t/[tenantSlug]/onboarding/page`
-  - because of that, the onboarding submit path is not yet fully signed off from automated testing and still needs a real browser verification and likely a code-level fix if the browser reproduces it
+  - `scripts/seed.ts` now seeds password hashes for the demo owner and demo viewer accounts
+  - rerunning the seed with `SEED_PASSWORD` / `SEED_MEMBER_PASSWORD` now resets those hashes deterministically
+- Database spot-checks on both `wapi.dev` and `wapi` now report `52` public tables, not `28`.
+- Request #05 remains the functional blocker for real WhatsApp session orchestration, but the Phase 3 UI/business-profile scope is now passing.
 
 ## 0. Prereqs
 
@@ -59,6 +56,14 @@ Expected new log lines:
 ```
 
 Re-running the seed should show `• ... already seeded` (idempotent).
+
+For reproducible browser checks, the seed now also supports:
+
+```bash
+SEED_PASSWORD='OwnerPassword123'
+SEED_MEMBER_PASSWORD='ViewerPassword123'
+pnpm db:seed
+```
 
 ## 2. Existing tenant (demo) — onboarding is already complete
 
@@ -118,7 +123,7 @@ select count(*) from products where tenant_id=(select id from tenants where slug
 select count(*) from services where tenant_id=(select id from tenants where slug='demo'); -- = 1
 
 -- total tables
-select count(*) from pg_tables where schemaname='public';  -- = 28
+select count(*) from pg_tables where schemaname='public';  -- = 52
 ```
 
 ## 7. Known NOT in this phase (documented only)
@@ -145,5 +150,6 @@ Current live status on `wapi-dev` after the 2026-04-25 retest:
 - `[x]` Products/services list pages show seeded row.
 - `[x]` Settings → Business view shows the seeded profile state.
 - `[x]` Fresh tenant redirects to onboarding.
-- `[ ]` Onboarding form submit writes and redirects back.
-- `[ ]` Non-owner cannot edit business profile. The test user is now seeded, but the automated guard check needs a clean browser-level confirmation.
+- `[x]` Onboarding form submit writes and redirects back.
+- `[x]` Non-owner cannot edit business profile.
+- `[x]` `pnpm typecheck` and `pnpm build` are clean locally and in the rebuilt app containers.

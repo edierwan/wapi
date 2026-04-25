@@ -5,11 +5,30 @@
 > Phase 3 features (business profile / products / services) remain
 > available and should keep working.
 
+## 2026-04-25 Live status
+
+- Public routing for both app envs was restored by updating the edge Caddy upstreams to the current Coolify container names and restarting `caddy`.
+- Confirmed healthy routes:
+   - `https://wapi-dev.getouch.co/api/health` returns `200`
+   - `https://wapi.getouch.co/api/health` returns `200`
+- Confirmed `/admin` in real browser sessions:
+   - `wapi-dev`: `admin@getouch.co` reaches `/admin`, sees the **System Admin** badge, and the `SYSTEM_SUPER_ADMIN` role chip
+   - `wapi`: `admin@getouch.co` reaches `/admin`, sees the same admin markers
+   - `wapi-dev`: non-admin viewer reaches `/access-denied?reason=admin`
+- Confirmed dark theme persistence on `wapi-dev`: clicking the theme toggle writes `wapi_theme=dark`, and the page reloads in dark mode.
+- Confirmed Phase 3 regression coverage on `wapi-dev` after the onboarding fix:
+   - onboarding page renders and submits for a fresh tenant
+   - products/services/settings business pages still render
+- Build and type checks are clean: `pnpm typecheck` and `pnpm build` both pass.
+- DB spot-checks now report `52` public tables in both `wapi.dev` and `wapi`, and RBAC seed counts remain `4` system roles and `19` system permissions.
+- Remaining limitation: OTP delivery was not fully validated end-to-end from this session because that requires a real WhatsApp number/device controlled by the tester.
+- Current live production config has `ENABLE_PUBLIC_REGISTRATION=true`, so `https://wapi.getouch.co/register` is open by configuration right now.
+
 ## 0 · Where to test
 
 | Env | URL | DB |
 |---|---|---|
-| Development | `https://wapi.dev.getouch.co` (or local) | `wapi.dev` |
+| Development | `https://wapi-dev.getouch.co` (or local) | `wapi.dev` |
 | Production  | `https://wapi.getouch.co`                | `wapi`     |
 
 The development DB has a working super-admin already:
@@ -25,13 +44,13 @@ Set these env vars in Coolify (or `.env.local` for local dev):
 
 ```
 ENABLE_PUBLIC_REGISTRATION=true     # opens /register
-ENABLE_DEV_OTP_FALLBACK=true        # surfaces OTP code in dev URL (DEV ONLY)
+ENABLE_DEV_OTP_FALLBACK=false       # keep false when validating the real WhatsApp OTP path
 ENABLE_DEV_EMAIL_LOGIN=false        # production-safe
 WA_GATEWAY_URL=https://wa.getouch.co
 WA_GATEWAY_SECRET=<gateway secret>
 ```
 
-In production you almost always want:
+Production is config-dependent. If you want public sign-up closed, set:
 
 ```
 ENABLE_PUBLIC_REGISTRATION=false
@@ -106,9 +125,10 @@ Expected: 1 user (`status=active`, `phone_verified=true`), 1 tenant with
 - **Invalid phone**: leave the digits empty / put letters → form rejects.
 - **Weak password**: `1234567` (7 chars) → rejected.
 - **Mismatched confirm**: passwords differ → rejected.
-- **`ENABLE_PUBLIC_REGISTRATION=false` in prod**: visit `/register` → see
-  *"Registration is not open yet."* card with a support email link, **no
-  form**.
+- **Production registration gate**: behavior follows the live
+   `ENABLE_PUBLIC_REGISTRATION` value. With `false`, `/register` should show the
+   *"Registration is not open yet."* card and no form. With `true`, the form is
+   expected to render.
 
 ## 5 · Login
 
@@ -204,6 +224,6 @@ Phase 4 must not regress Phase 3:
 - [ ] Non-admin gets `/access-denied?reason=admin`
 - [ ] Dark theme toggle persists across reload
 - [ ] `pnpm typecheck && pnpm build` clean
-- [ ] Both `wapi` and `wapi.dev` still report **31 tables**
+- [ ] Both `wapi` and `wapi.dev` still report **52 tables**
 - [ ] Both DBs have the 4 system roles + 19 permissions seeded
 - [ ] No password / OTP secret committed to git

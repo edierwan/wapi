@@ -69,73 +69,73 @@ const NATURE_CODE_TO_LEGACY: Record<string, string> = {
 };
 
 export function OnboardingForm({
-  ref,
+  refData,
   defaults,
 }: {
-  ref: OnboardingRefData;
+  refData: OnboardingRefData;
   defaults: OnboardingDefaults;
 }) {
   // Compute initial selections. If FK ids are missing, derive from defaults
   // or fall back to Malaysia.
-  const malaysia = ref.countries.find((c) => c.iso2Code === "MY") ?? ref.countries[0];
+  const malaysia = refData.countries.find((c) => c.iso2Code === "MY") ?? refData.countries[0];
   const initialCountryId = defaults.countryId ?? malaysia?.id ?? "";
 
   const [countryId, setCountryId] = useState(initialCountryId);
   const [currencyId, setCurrencyId] = useState(
     defaults.currencyId ??
-      currencyFromCountry(ref.currencies, malaysia ?? null) ??
+      currencyFromCountry(refData.currencies, malaysia ?? null) ??
       "",
   );
   const [languageId, setLanguageId] = useState(
     defaults.languageId ??
-      languageFromCountry(ref.languages, malaysia ?? null) ??
+      languageFromCountry(refData.languages, malaysia ?? null) ??
       "",
   );
   const [timezoneId, setTimezoneId] = useState(
     defaults.timezoneId ??
-      timezoneFromCountry(ref.timezones, malaysia ?? null) ??
+      timezoneFromCountry(refData.timezones, malaysia ?? null) ??
       "",
   );
   const [industryId, setIndustryId] = useState(defaults.industryId ?? "");
   const [natureId, setNatureId] = useState(
     defaults.businessNatureId ??
-      ref.natures.find((n) => n.code === "service")?.id ??
+      refData.natures.find((n) => n.code === "service")?.id ??
       "",
   );
   const [voiceId, setVoiceId] = useState(defaults.brandVoiceId ?? "");
   const [voiceCustom, setVoiceCustom] = useState(defaults.brandVoiceCustom ?? "");
 
   const selectedCountry = useMemo(
-    () => ref.countries.find((c) => c.id === countryId) ?? null,
-    [ref.countries, countryId],
+    () => refData.countries.find((c) => c.id === countryId) ?? null,
+    [refData.countries, countryId],
   );
   const selectedNature = useMemo(
-    () => ref.natures.find((n) => n.id === natureId) ?? null,
-    [ref.natures, natureId],
+    () => refData.natures.find((n) => n.id === natureId) ?? null,
+    [refData.natures, natureId],
   );
   const selectedCurrency = useMemo(
-    () => ref.currencies.find((c) => c.id === currencyId) ?? null,
-    [ref.currencies, currencyId],
+    () => refData.currencies.find((c) => c.id === currencyId) ?? null,
+    [refData.currencies, currencyId],
   );
   const selectedLanguage = useMemo(
-    () => ref.languages.find((l) => l.id === languageId) ?? null,
-    [ref.languages, languageId],
+    () => refData.languages.find((l) => l.id === languageId) ?? null,
+    [refData.languages, languageId],
   );
   const selectedTimezone = useMemo(
-    () => ref.timezones.find((t) => t.id === timezoneId) ?? null,
-    [ref.timezones, timezoneId],
+    () => refData.timezones.find((t) => t.id === timezoneId) ?? null,
+    [refData.timezones, timezoneId],
   );
 
   function onCountryChange(newId: string) {
     setCountryId(newId);
-    const c = ref.countries.find((x) => x.id === newId);
+    const c = refData.countries.find((x) => x.id === newId);
     if (!c) return;
     // Auto-fill cascade — only when a default code is present.
-    const cur = ref.currencies.find((x) => x.code === c.defaultCurrencyCode);
+    const cur = refData.currencies.find((x) => x.code === c.defaultCurrencyCode);
     if (cur) setCurrencyId(cur.id);
-    const lang = ref.languages.find((x) => x.code === c.defaultLanguageCode);
+    const lang = refData.languages.find((x) => x.code === c.defaultLanguageCode);
     if (lang) setLanguageId(lang.id);
-    const tz = ref.timezones.find((x) => x.name === c.defaultTimezone);
+    const tz = refData.timezones.find((x) => x.name === c.defaultTimezone);
     if (tz) setTimezoneId(tz.id);
   }
 
@@ -184,7 +184,7 @@ export function OnboardingForm({
           </CardDescription>
         </CardHeader>
         <CardContent className="grid gap-2 sm:grid-cols-2">
-          {ref.natures.map((n) => (
+          {refData.natures.map((n) => (
             <label
               key={n.id}
               className="flex cursor-pointer items-start gap-3 rounded-md border border-[var(--border)] p-3 transition hover:border-[var(--primary)]/50 has-[:checked]:border-[var(--primary)] has-[:checked]:bg-[color-mix(in_oklch,var(--primary)_6%,transparent)]"
@@ -225,7 +225,7 @@ export function OnboardingForm({
             value={industryId}
             onChange={setIndustryId}
             placeholder="Select industry…"
-            options={ref.industries.map((i) => ({
+            options={refData.industries.map((i) => ({
               value: i.id,
               label: i.name,
               hint: i.description ?? undefined,
@@ -235,7 +235,7 @@ export function OnboardingForm({
             label="Primary country"
             value={countryId}
             onChange={onCountryChange}
-            options={ref.countries.map((c) => ({
+            options={refData.countries.map((c) => ({
               value: c.id,
               label: `${c.name} (${c.iso2Code})`,
             }))}
@@ -244,7 +244,7 @@ export function OnboardingForm({
             label="Default currency"
             value={currencyId}
             onChange={setCurrencyId}
-            options={ref.currencies.map((c) => ({
+            options={refData.currencies.map((c) => ({
               value: c.id,
               label: `${c.code} — ${c.name}${c.symbol ? ` (${c.symbol})` : ""}`,
             }))}
@@ -253,7 +253,7 @@ export function OnboardingForm({
             label="Default language"
             value={languageId}
             onChange={setLanguageId}
-            options={ref.languages.map((l) => ({
+            options={refData.languages.map((l) => ({
               value: l.id,
               label: l.nativeName ? `${l.name} — ${l.nativeName}` : l.name,
             }))}
@@ -262,7 +262,7 @@ export function OnboardingForm({
             label="Timezone"
             value={timezoneId}
             onChange={setTimezoneId}
-            options={ref.timezones.map((t) => ({ value: t.id, label: t.label }))}
+            options={refData.timezones.map((t) => ({ value: t.id, label: t.label }))}
           />
           <TextField
             label="Primary phone"
@@ -297,7 +297,7 @@ export function OnboardingForm({
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="grid gap-2 sm:grid-cols-2">
-            {ref.voices.map((v) => (
+            {refData.voices.map((v) => (
               <label
                 key={v.id}
                 className="flex cursor-pointer items-start gap-3 rounded-md border border-[var(--border)] p-3 transition hover:border-[var(--primary)]/50 has-[:checked]:border-[var(--primary)] has-[:checked]:bg-[color-mix(in_oklch,var(--primary)_6%,transparent)]"
@@ -353,7 +353,7 @@ export function OnboardingForm({
           {/* Keep the legacy free-text column populated for back-compat. */}
           <input type="hidden" name="brandVoice" value={voiceCustom.slice(0, 400)} />
           <input type="hidden" name="industry" value={
-            ref.industries.find((i) => i.id === industryId)?.name ?? defaults.industryFreeText ?? ""
+            refData.industries.find((i) => i.id === industryId)?.name ?? defaults.industryFreeText ?? ""
           } />
         </CardContent>
       </Card>

@@ -18,6 +18,7 @@
 import { existsSync } from "node:fs";
 import path from "node:path";
 import dotenv from "dotenv";
+import bcrypt from "bcryptjs";
 import { eq, and } from "drizzle-orm";
 import { Pool } from "pg";
 import { drizzle } from "drizzle-orm/node-postgres";
@@ -45,6 +46,10 @@ async function main() {
     .toLowerCase();
   const memberEmail =
     process.env.SEED_MEMBER_EMAIL?.trim().toLowerCase() || "phase3-viewer-demo@local.invalid";
+  const ownerPassword = process.env.SEED_PASSWORD || "SeedDemo123!";
+  const memberPassword = process.env.SEED_MEMBER_PASSWORD || "SeedViewer123!";
+  const shouldResetOwnerPassword = Boolean(process.env.SEED_PASSWORD);
+  const shouldResetMemberPassword = Boolean(process.env.SEED_MEMBER_PASSWORD);
 
   const pool = new Pool({ connectionString: url });
   const db = drizzle(pool, { schema });
@@ -56,15 +61,33 @@ async function main() {
     await db.select().from(schema.users).where(eq(schema.users.email, email)).limit(1)
   )[0];
   if (!user) {
+    const passwordHash = await bcrypt.hash(ownerPassword, 12);
     user = (
       await db
         .insert(schema.users)
-        .values({ email, name: "Demo Admin", isSystemAdmin: true })
+        .values({
+          email,
+          name: "Demo Admin",
+          isSystemAdmin: true,
+          passwordHash,
+        })
         .returning()
     )[0]!;
     console.log(`  ✓ created user ${user.id}`);
   } else {
     console.log(`  • user exists ${user.id}`);
+  }
+
+  if (!user.passwordHash || shouldResetOwnerPassword) {
+    const passwordHash = await bcrypt.hash(ownerPassword, 12);
+    [user] = await db
+      .update(schema.users)
+      .set({ passwordHash })
+      .where(eq(schema.users.id, user.id))
+      .returning();
+    console.log(
+      `  ✓ ${user.passwordHash ? "reset" : "set"} owner password hash for ${email}`,
+    );
   }
 
   // 2) tenant
@@ -122,15 +145,33 @@ async function main() {
     await db.select().from(schema.users).where(eq(schema.users.email, memberEmail)).limit(1)
   )[0];
   if (!memberUser) {
+    const passwordHash = await bcrypt.hash(memberPassword, 12);
     memberUser = (
       await db
         .insert(schema.users)
-        .values({ email: memberEmail, name: "Demo Member", isSystemAdmin: false })
+        .values({
+          email: memberEmail,
+          name: "Demo Member",
+          isSystemAdmin: false,
+          passwordHash,
+        })
         .returning()
     )[0]!;
     console.log(`  ✓ created viewer user ${memberUser.id}`);
   } else {
     console.log(`  • viewer user exists ${memberUser.id}`);
+  }
+
+  if (!memberUser.passwordHash || shouldResetMemberPassword) {
+    const passwordHash = await bcrypt.hash(memberPassword, 12);
+    [memberUser] = await db
+      .update(schema.users)
+      .set({ passwordHash })
+      .where(eq(schema.users.id, memberUser.id))
+      .returning();
+    console.log(
+      `  ✓ ${memberUser.passwordHash ? "reset" : "set"} viewer password hash for ${memberEmail}`,
+    );
   }
 
   const memberMembership = (

@@ -4,6 +4,20 @@
 > **From:** WAPI application.
 > **Status:** required before WAPI Phase 3 can send/receive WhatsApp traffic.
 
+## 2026-04-25 Live assessment
+
+- Status: hard fail, not green.
+- The deployed gateway at `wa.getouch.co` is still single-session:
+  - module-scoped connection state and one shared Baileys socket
+  - one shared auth directory rather than per-session storage
+  - no `/sessions/*` API surface
+  - no `X-WAPI-Secret` shared-secret contract
+  - no webhook delivery back into WAPI
+- The current admin console and `/api/*` endpoints are still useful for one number,
+  but they do not satisfy the multi-tenant contract this request requires.
+- Result: WAPI Phase 3/4 platform checks can proceed for UI/auth/business-profile work,
+  but WhatsApp session orchestration is still blocked on this request.
+
 ## Why
 
 The current gateway UI appears to manage **one** WhatsApp session

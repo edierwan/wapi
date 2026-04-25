@@ -6,7 +6,7 @@ import {
   signInWithPassword,
   signOut as authSignOut,
 } from "@/server/auth";
-import { userHasAnySystemRole } from "@/server/permissions";
+import { userHasSystemPermission } from "@/server/permissions";
 
 export type LoginState = { ok: boolean; error?: string };
 
@@ -33,8 +33,10 @@ export async function signInAction(
     return { ok: false, error: err instanceof Error ? err.message : "Login failed." };
   }
 
-  // System admins always land on /admin.
-  const isAdmin = await userHasAnySystemRole(userId).catch(() => false);
+  // System admins (anyone with system.admin.access) always land on /admin.
+  const isAdmin = await userHasSystemPermission(userId, "system.admin.access").catch(
+    () => false,
+  );
   redirect(isAdmin ? "/admin" : "/dashboard");
 }
 

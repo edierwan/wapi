@@ -73,6 +73,25 @@ Support admin can "view as tenant owner" on a specific tenant:
 ## Phase
 
 - **Phase 3**: block `/admin` at middleware (system admin only). No UI yet.
+- **Phase 4 (shipped)**: minimal `/admin` placeholder gated by RBAC,
+  System Admin badge, role chips, sign-out — overview-only.
+- **Phase 5–7 (shipped)**: full admin console **shell** lands early so
+  later phases can plug in modules without further chrome work:
+  - `src/app/admin/layout.tsx` — sticky header (env badge, role chip,
+    user email, theme toggle, sign-out) + left sidebar with active-route
+    highlighting + mobile fallback.
+  - `src/app/admin/_nav.ts` — single source of truth for the sidebar and
+    the overview tile grid.
+  - Placeholder routes for every nav entry: `/admin/tenants`,
+    `/admin/users`, `/admin/wa-sessions`, `/admin/jobs`, `/admin/ai`,
+    `/admin/billing`, `/admin/audit`, `/admin/system-health`,
+    `/admin/abuse`, `/admin/settings`. Each renders the shared
+    `AdminPlaceholder` component until its module ships.
+  - Access control uses the `system.admin.access` permission (no email
+    hardcoding).
 - **Phase 8**: build admin console v1 (tenants + users + WA sessions + audit + system-health).
 - **Phase 9**: add billing surfaces.
-- **Phase 10**: impersonation + abuse/risk dashboard.
+- **Phase 10**: impersonation + abuse/risk dashboard. **TODO**: future
+  support mode must let system admins inspect tenant workspaces with
+  audit logging + a visible "SUPPORT MODE" banner. Not implemented yet —
+  system admins are intentionally NOT routed into tenant onboarding.
