@@ -4,6 +4,10 @@ This is a manual-test script for the human tester to confirm the Phase 8a
 shared inbox slice end-to-end. Automated parts (typecheck, build, route
 registration) are confirmed by the build output.
 
+Additional automated coverage now exists in `src/server/inbox-core.test.ts`
+for the pure inbox merge logic: identity anchor, preview truncation,
+tie-breaking, and merged timeline ordering.
+
 ## Pre-requisites
 
 - Logged in as a tenant member (any role can read). Owner/admin not

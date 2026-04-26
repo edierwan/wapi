@@ -1,8 +1,11 @@
 /**
- * Follow-up sequence auto-trigger pass (cron-style, manual run).
+ * Follow-up sequence auto-trigger pass.
  *
- * Run manually:
- *   pnpm tsx scripts/follow-up-executor.ts
+ * Run modes (Phase 8b):
+ *   pnpm worker:followups          # one-shot tick (default)
+ *   WAPI_WORKER_MODE=loop pnpm worker:followups
+ *                                  # supervised loop with heartbeat
+ *   pnpm worker:followups:loop     # convenience for the above
  *
  * Behavior:
  *   - Scans every active follow-up sequence across all tenants.
@@ -19,22 +22,36 @@
  *     tenants without a `tenant_id` filter.
  *   - Each sequence already carries its tenant_id, so iteration is
  *     naturally tenant-bounded.
- *
- * This script is intentionally not wired into a long-running daemon
- * yet. Operators run it manually until the live worker harness lands.
  */
 
 import { runAutoTriggers } from "@/server/follow-up-executor";
+import { runSupervised } from "@/server/worker-supervisor";
 
-async function main() {
+async function tick() {
   const result = await runAutoTriggers();
   console.log(
     `[follow-up-executor] scanned ${result.sequencesScanned} sequence(s), enrolled ${result.enrolled} contact(s)`,
   );
+  return {
+    counts: {
+      sequencesScanned: result.sequencesScanned,
+      enrolled: result.enrolled,
+    },
+  };
 }
 
 if (require.main === module) {
-  main().then(
+  const runMode = process.env.WAPI_WORKER_MODE === "loop" ? "loop" : "once";
+  const intervalMs = Number.parseInt(
+    process.env.WAPI_WORKER_INTERVAL_MS ?? "60000",
+    10,
+  );
+  runSupervised({
+    name: "follow-ups",
+    tick,
+    runMode,
+    intervalMs: Number.isFinite(intervalMs) && intervalMs > 0 ? intervalMs : 60_000,
+  }).then(
     () => process.exit(0),
     (err) => {
       console.error(err);

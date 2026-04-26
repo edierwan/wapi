@@ -8,6 +8,7 @@
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
+    "test:unit": "tsx --test src/server/*.test.ts",
     "typecheck": "tsc --noEmit",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "drizzle-kit migrate",
@@ -16,7 +17,9 @@
     "db:seed:reference": "tsx scripts/seed-reference.ts",
     "db:bootstrap:admin": "tsx scripts/bootstrap-admin.ts",
     "worker:outbound": "tsx scripts/worker-outbound.ts",
-    "worker:followups": "tsx scripts/follow-up-executor.ts"
+    "worker:outbound:loop": "WAPI_WORKER_MODE=loop tsx scripts/worker-outbound.ts",
+    "worker:followups": "tsx scripts/follow-up-executor.ts",
+    "worker:followups:loop": "WAPI_WORKER_MODE=loop tsx scripts/follow-up-executor.ts"
   },
   "dependencies": {
     "@radix-ui/react-accordion": "^1.2.2",
