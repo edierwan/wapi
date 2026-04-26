@@ -1,6 +1,6 @@
 # WAPI Delivery Progress
 
-Last updated: 2026-04-26 (release-hardening pass)
+Last updated: 2026-04-26 (Phase 8a shared inbox)
 
 ## Primary delivery ledger
 
@@ -371,6 +371,79 @@ defects.
 - Local `pnpm db:seed` requires a local `.env.local` with
   `DATABASE_URL`. Not a defect; environment-only.
 
+## Phase 8a — shared inbox view (2026-04-26)
+
+Scope: tenant-scoped, channel-agnostic-in-shape inbox read model
+anchored on `(tenant_id, normalized_phone_number)`. No new schema.
+Read-only first slice — composing / replying lands in a later slice.
+
+### Delivered
+
+- `src/server/inbox.ts`:
+  - `listConversations(tenantId, { limit })` — groups
+    `inbound_messages` + non-OTP `message_queue` by phone, joins to
+    `contacts` for display, computes inbound/outbound counts and an
+    `awaitingReplyCount` proxy (inbound after the latest outbound).
+  - `getConversation(tenantId, normalizedPhone)` — single-conversation
+    summary used by the detail page.
+  - `getConversationTimeline(tenantId, normalizedPhone, { limit })` —
+    merged inbound + outbound timeline, OTPs filtered out, newest-first
+    ordering returned (the page renders chronologically).
+  - Channel-agnostic shape: returned `channel` is the literal
+    `'whatsapp'`. Future channels add their own aggregate queries that
+    merge into the same per-phone map without schema churn.
+  - Smart Customer Memory compatibility: identity is always the tuple
+    `(tenant_id, normalized_phone_number)`. The module never reads
+    `whatsapp_sessions` for identity.
+- `src/app/t/[tenantSlug]/inbox/page.tsx` — list view: per-conversation
+  row with contact name (or phone), preview, counters, channel chip,
+  relative time, `+N new` chip when inbound > latest outbound.
+- `src/app/t/[tenantSlug]/inbox/[phone]/page.tsx` — detail view: header
+  with contact link, summary counters, merged chat-style timeline
+  (oldest at top, newest at bottom), per-event metadata (purpose,
+  status, intent).
+- `src/components/tenant/sub-nav.tsx` — Inbox tab no longer `soon`.
+- `docs/request/15-test-phase8a-inbox.md` — manual test plan
+  (tenant scoping, list grouping, detail timeline, identity invariants,
+  Smart Customer Memory code-audit step). One request doc added because
+  no existing test doc covered Phase 8a.
+
+### Tests run after delivery
+
+- `pnpm typecheck` — pass.
+- `pnpm build` — pass; new routes register:
+  - `/t/[tenantSlug]/inbox`
+  - `/t/[tenantSlug]/inbox/[phone]`
+- Live deploy health: `wapi-dev.getouch.co` → `200`,
+  `wapi.getouch.co` → `200`.
+- Narrowest behavior code audit:
+  - Every query in `inbox.ts` filters by `tenant_id`.
+  - OTPs (`purpose='otp'`) excluded from both list aggregate and
+    timeline.
+  - `awaitingReplyCount` correctly resolves to 0 when there is no
+    outbound (uses `coalesce(..., 'epoch'::timestamptz)`).
+  - Phone-only conversations (no `contacts` row) still appear in the
+    list and detail view; the contact link is replaced with
+    "Not linked to a contact yet".
+  - Conversation key never falls back to `whatsapp_sessions`.
+
+### Pending interactive checks (Phase 8a)
+
+- Browser pass for the list view (sort order, counters, `+N new` chip).
+- Browser pass for the detail view (timeline ordering, OTP suppression,
+  contact link target).
+- Cross-tenant URL probe: signed-in Tenant B visiting Tenant A's
+  inbox detail URL must 404.
+- Phone with no `contacts` row renders a usable list + detail view.
+
+### Phase 8a out of scope (not regressions)
+
+- Composing / replying from the inbox.
+- Server-side read markers; `awaitingReplyCount` is a derived proxy.
+- AI summary or rolling conversation memory (Phase 8c).
+- Cross-channel rollouts (Facebook / Instagram / Shopee / Lazada /
+  TikTok).
+
 ## Blockers and limits in this pass
 
 - I do not have the current super-admin password in this conversation, so I could not complete the signed-in admin browser checks from Test 11.
@@ -449,23 +522,23 @@ After this round we have shipped:
 - Phase 7 functional tranche
 - Phase 7 remaining slice (consent / reply-first / rate limit /
   follow-up executor / AI variant HITL / KPIs)
-- Release-hardening pass (this round)
+- Release-hardening pass
+- Phase 8a — shared inbox view (this round)
 
 Remaining cycles needed to close MVP+1:
 
-1. **Cycle N+1**: Phase 8a — shared inbox view (tenant-scoped, channel-agnostic).
-2. **Cycle N+2**: Phase 8b — supervised worker run mode + system-health
+1. **Cycle N+1**: Phase 8b — supervised worker run mode + system-health
    data hook.
-3. **Cycle N+3**: Phase 8c — Smart Customer Memory schema seed and
+2. **Cycle N+2**: Phase 8c — Smart Customer Memory schema seed and
    read-only writes from inbound/outbound events.
-4. **Cycle N+4**: full admin-module tranche (turn `Coming soon` cards
+3. **Cycle N+3**: full admin-module tranche (turn `Coming soon` cards
    into the first three real modules: Tenants, Users, AI).
-5. **Cycle N+5** (buffer): release hardening, billing groundwork,
+4. **Cycle N+4** (buffer): release hardening, billing groundwork,
    omnichannel architecture finalization.
 
-That leaves us at **5 remaining cycles**, which fits inside the
+That leaves us at **4 remaining cycles**, which fits inside the
 "fewer than 6 from here" budget if Request 05 unblocks before
-N+2 lands. If Request 05 slips, cycle N+2 may need to absorb a
+N+1 lands. If Request 05 slips, cycle N+1 may need to absorb a
 gateway-integration validation tranche (still inside the 6-cycle
 budget).
 
