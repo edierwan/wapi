@@ -1,6 +1,6 @@
 # WAPI Delivery Progress
 
-Last updated: 2026-04-26 (tenant logout + admin users shipped; Request 05 re-assessed)
+Last updated: 2026-04-26 (admin tranche shipped, deployed, and smoke-tested)
 
 ## Primary delivery ledger
 
@@ -138,18 +138,20 @@ Validation in this round:
   - `pnpm typecheck`
   - `pnpm build`
 
+Publication and deployment result:
+
+- `develop` pushed to `origin/develop` at `3fb951c`
+- Coolify dev deployment finished for commit `3fb951cbcdb4025e816411fc9d11fc4580c11bd7`
+- live dev image tag now resolves to `t1xhkiq5wah66nss0onb7fpf:3fb951cbcdb4025e816411fc9d11fc4580c11bd7`
+- `main` merged and pushed to `origin/main` at merge commit `f91a9fc`
+- Coolify prod deployment finished for commit `f91a9fce13431652abf56017dd8a9d0f99f1ad0d`
+- live prod image tag now resolves to `nql6rdsjrcmlvcee1o2dz8wd:f91a9fce13431652abf56017dd8a9d0f99f1ad0d`
+- both dev and prod hit temporary `502` after Coolify container-name rotation and were restored by rerunning the host-side Caddy upstream sync helper
+
 Remaining manual checks:
 
-- signed-in browser smoke test on dev for:
-  - `/admin`
-  - `/admin/users`
-  - `/admin/tenants`
-  - `/admin/wa-sessions`
-  - `/admin/jobs`
-  - `/admin/ai`
-  - `/admin/settings`
-  - `/admin/system-health`
-- non-admin redirect confirmation on `/admin/users`
+- signed-in browser smoke test on dev for the shipped admin routes
+- non-admin redirect confirmation on `/admin` and `/admin/users`
 - mobile / narrow viewport pass for the updated nav badges and real-module pages
 - repeat tenant registration reset flow using `/admin/users`
 
@@ -162,6 +164,8 @@ Remaining manual checks:
 - Anonymous `/admin` on dev redirects to `/login?next=/admin`
 - Anonymous `/admin` on prod redirects to `/login?next=/admin`
 - Anonymous `/admin/users` on dev redirects to `/login?next=/admin`
+- Anonymous `/admin/users` on prod redirects to `/login?next=/admin`
+- Anonymous `/admin/tenants`, `/admin/wa-sessions`, `/admin/jobs`, `/admin/ai`, `/admin/settings`, and `/admin/system-health` redirect to `/login?next=/admin` on both dev and prod
 
 ### Local build validation
 
