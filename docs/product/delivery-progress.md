@@ -891,6 +891,29 @@ Still pending after this fix:
 
 WAPI Phase 6 schema is ready to receive gateway integration; WAPI contract-ready app-side integration is shipped. Request 05 is **partially green**: multi-session runtime and admin UI live, secured, and isolation-verified; full two-number live pairing + persistent retry queue + WAPI-side secret wiring remain.
 
+#### 2026-04-26 round 3 — secret sync, UI LOADING fix, webhook header parity
+
+User pasted the gateway `WAPI_SECRET` value into the WAPI Coolify (dev) env as `WA_GATEWAY_SECRET` and added `WA_GATEWAY_DEFAULT_URL=https://wa.getouch.co`, `WA_GATEWAY_URL=https://wa.getouch.co`, `OTP_PROVIDER=whatsapp_gateway`, and redeployed WAPI. Verification done **without** printing the secret value:
+
+- WAPI reads `WA_GATEWAY_SECRET` (`wapi/src/lib/env.ts` lines 17–19; consumed in `wapi/src/server/wa-gateway.ts::authHeaders` and `wapi/src/server/wa-webhook-verify.ts`). Gateway reads the same value as `WAPI_SECRET` (`getouch.co/services/wa/server.mjs`). Both sides confirmed by hash compare on the gateway side (`sha256(WAPI_SECRET) | head -c8 = f512868d`); WAPI side accepted by user confirmation that the same string was pasted.
+- Live curl matrix against `https://wa.getouch.co`:
+  - `GET /health` → `200` (`defaultStatus:"connected"`, `defaultPhone:"60192277233"`, `sessions:1`).
+  - `GET /api/sessions/default/status` no header → `401`. Wrong secret → `401`. Correct `X-WAPI-Secret` → `200` with full per-session snapshot.
+
+**Admin UI LOADING bug fixed.** Root cause: `services/wa/ui.mjs` `pollStatus()` was comparing the gateway's `whatsapp` field against the legacy literal `"open"`. The multi-session gateway returns `whatsapp:"connected"` and `defaultStatus:"connected"`, so the status pill stayed red/Disconnected even when default-session was healthy — that's what looked like "still loading / old UI". Shipped in `getouch.co` `c0b5013` (main) → `73640dd` (develop) and live-deployed:
+
+- `pollStatus()` now normalizes both new (`connected`/`connecting`/`disconnected`) and legacy (`open`/`pending`/`closed`) status strings.
+- Overview now shows Sessions and Webhook cards (totals, queue size, delivered, failed) so multi-session is visible from the default landing page.
+- Tools page lists the new `/api/sessions/:id/*` surface (with `X-WAPI-Secret`) and marks all legacy `/api/*` endpoints as deprecated.
+- Live verified: container recreated, `default` reconnected to `+60192277233`, status pill paints green.
+
+**Webhook delivery is still failing — known follow-up.** `/health.webhook.stats.lastFailureMessage:"status 404"`. Two mismatches between the gateway dispatcher and the WAPI receivers:
+
+- **Header.** Gateway dispatcher signs with `X-WA-Signature`. WAPI verifier expects `x-wapi-signature` (`wapi/src/server/wa-webhook-verify.ts::WEBHOOK_SIGNATURE_HEADER`). Round-3 partial fix: dispatcher now also sends `X-WAPI-Signature` from the same HMAC, so once the URL fan-out lands the signature already matches.
+- **URL fan-out.** `WAPI_WEBHOOK_URL=https://wapi.getouch.co/api/wa/events` but WAPI exposes only per-event-type routes `/api/wa/webhooks/{qr,connected,disconnected,inbound,status}`. There is no `/api/wa/events` on WAPI, so every dispatch returns `404`. Fix to ship next round: add `/api/wa/events` multiplexer on WAPI that verifies `x-wapi-signature` and routes by `body.type`.
+
+**Two-number live test deferred** per user instruction. Will be picked up after the webhook fix lands and `/health.webhook.queueSize` stays at zero with `delivered` ticking up.
+
 ## Recommended next tranche for Coder AI
 
 Coder AI should use this file as the current-state source of truth and update it after each meaningful validation or delivery step.

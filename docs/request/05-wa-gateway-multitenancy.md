@@ -385,6 +385,103 @@ Admin UI:
   presents the matching header when calling
   `/api/sessions/:accountId/*`.
 
+### 2026-04-26 Round 3 — secret sync, UI LOADING fix, webhook header parity
+
+User updated WAPI Coolify (dev) with the multi-session contract envs and
+asked us to verify the wiring without printing the secret value. Three
+issues were identified and resolved (one in code, two documented for
+follow-up):
+
+1. **WAPI env name confirmation.** WAPI reads the shared HMAC secret as
+   `WA_GATEWAY_SECRET` (declared in `wapi/src/lib/env.ts` lines 17–19,
+   consumed in `wapi/src/server/wa-gateway.ts::authHeaders` and in
+   `wapi/src/server/wa-webhook-verify.ts`). Gateway reads the same
+   value as `WAPI_SECRET` (`getouch.co/services/wa/server.mjs`,
+   passed into `SessionManager` and `WebhookDispatcher`).
+   Verified by hash without printing the value: gateway-side
+   `sha256(WAPI_SECRET) | head -c8 = f512868d`. User confirmed they
+   pasted the exact same secret string into the WAPI Coolify dev env
+   variable `WA_GATEWAY_SECRET`. Both sides also have
+   `WA_GATEWAY_DEFAULT_URL=https://wa.getouch.co`,
+   `WA_GATEWAY_URL=https://wa.getouch.co`, and
+   `OTP_PROVIDER=whatsapp_gateway`.
+
+2. **Live API auth contract verified.**
+
+   ```
+   GET  /health                                                   → 200
+   GET  /api/sessions/default/status      (no header)             → 401
+   GET  /api/sessions/default/status      (X-WAPI-Secret: <ok>)   → 200
+                                                                    {status:"connected",
+                                                                     phoneNumber:"60192277233"}
+   ```
+
+   `wa-gateway.ts::authHeaders` actually sends both `x-api-key` and
+   `x-wapi-secret` so the legacy gateway path also works; the new
+   `/api/sessions/*` path strictly checks `X-WAPI-Secret`. Either header
+   on its own is enough; the live curl matrix confirmed the gateway
+   correctly rejects empty or wrong secrets.
+
+3. **Admin UI was stuck on LOADING / "old-looking".** Root cause:
+   `services/wa/ui.mjs` `pollStatus()` compared the gateway response
+   field `whatsapp` against the legacy literal `"open"`. The
+   multi-session gateway now returns `whatsapp:"connected"` and
+   `defaultStatus:"connected"`, so the pill stayed red/Disconnected
+   even when the default session was healthy. Fix landed in
+   `getouch.co` commit `c0b5013` (main) → `73640dd` (develop):
+
+   - `pollStatus()` normalizes both the new strings (`connected`,
+     `connecting`, `disconnected`) and the legacy ones (`open`,
+     `pending`, `closed`).
+   - Overview page now renders Sessions and Webhook cards (totals,
+     queue size, delivered, failed) so multi-session is visible from
+     the default landing page, not only from `/sessions`.
+   - Tools page now lists the multi-session `/api/sessions/:id/*`
+     surface (with `X-WAPI-Secret`) and explicitly marks the legacy
+     `/api/*` endpoints as deprecated.
+
+   Live deploy: `git checkout origin/main -- services/wa/ui.mjs
+   services/wa/webhook-dispatcher.mjs` on `/home/deploy/apps/getouch.co`,
+   then `docker compose build wa && docker compose up -d
+   --force-recreate wa`. Gateway came back green: `default` session
+   reconnected to `+60192277233`, `defaultStatus:"connected"`,
+   `sessions:1`. Browser admin UI now reflects connected state.
+
+4. **Webhook delivery is still failing — known follow-up, not blocking
+   the round-3 ask.** `/health` shows
+   `webhook.stats.lastFailureMessage:"status 404"` and a small queue
+   backlog. Two mismatches were found between the gateway dispatcher
+   and the WAPI receivers:
+
+   - **Header naming.** Gateway sends HMAC in `X-WA-Signature`. WAPI's
+     verifier (`wapi/src/server/wa-webhook-verify.ts`,
+     `WEBHOOK_SIGNATURE_HEADER = "x-wapi-signature"`) expects
+     `x-wapi-signature`. Round-3 partial fix: dispatcher now sends
+     **both** `X-WA-Signature` and `X-WAPI-Signature` from the same
+     HMAC (commit `c0b5013`), so once the URL fan-out lands the
+     signature will already match WAPI's verifier.
+   - **URL fan-out.** `WAPI_WEBHOOK_URL=https://wapi.getouch.co/api/wa/events`
+     but WAPI exposes only per-event-type routes
+     `/api/wa/webhooks/{qr,connected,disconnected,inbound,status}`. There
+     is **no** `/api/wa/events` endpoint on WAPI, so every dispatch
+     comes back as `404`. Two viable options for the next round:
+     (a) add an `/api/wa/events` multiplexer route in WAPI that
+     verifies `x-wapi-signature` and re-dispatches by `body.type`; or
+     (b) change the gateway dispatcher to fan a single in-memory
+     event out to the matching per-type URL. (a) is preferred because
+     it keeps the gateway emitting one transport call per event and
+     keeps the verification surface small.
+
+   Until that fix lands, Connect/QR events from the gateway will not
+   propagate back to WAPI. WAPI can still drive the gateway via the
+   request-side `/api/sessions/*` API; the UI on either side just
+   won't auto-refresh on inbound state changes from the gateway.
+
+5. **Two-number live test deferred per user instruction** ("Do not
+   proceed to WhatsApp number testing yet"). Will be picked up after
+   the webhook fix above is deployed and `/health.webhook.queueSize`
+   stays at zero with `delivered` ticking up.
+
 ## 2026-04-26 Implementation Plan / Status
 
 - Status: still blocked at the gateway layer.
