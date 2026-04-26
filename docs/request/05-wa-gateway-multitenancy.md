@@ -267,6 +267,124 @@ Verified:
   to avoid a reconnect storm after a container restart. Set
   `AUTO_START_SESSIONS=true` to opt in.
 
+### 2026-04-26 Live deployment fix (round 2)
+
+After the first push (commit `22988ed` on `getouch.co` `main`),
+`https://wa.getouch.co` was still serving the old single-session UI and
+`/api/sessions/*` routes returned `404`. Investigation found the root
+cause was **not** missing code — it was the deployment topology:
+
+1. `wa.getouch.co` is **not** managed by Coolify. Coolify on the same
+   host builds the Next.js app at `getouch.co` only. The WA gateway is
+   deployed via a manual `docker compose` project at
+   `/home/deploy/apps/getouch.co/compose.yaml` on `100.84.14.93`.
+2. That manual checkout was on `main` but stuck at commit `36ecee3`,
+   with significant un-pushed local hotfixes to `services/wa/server.mjs`
+   (+541 LoC) and `services/wa/db.mjs` (+186 LoC).
+3. Even after fetching `origin/main` and replacing the WA service files,
+   the `services/wa/Dockerfile` only copied
+   `server.mjs db.mjs ui.mjs` into the image — so the new
+   `session-manager.mjs` and `webhook-dispatcher.mjs` were silently
+   excluded from the build.
+
+Fix steps applied on `100.84.14.93`:
+
+- Backup of pre-change WA files saved to
+  `/home/deploy/backups/wa-pre-multisession-20260426-155326/`
+  (includes `server.mjs.diff` and `db.mjs.diff` of the local hotfixes
+  for traceability).
+- `git fetch origin && git checkout origin/main -- services/wa/server.mjs
+  services/wa/.env.example services/wa/ui.mjs
+  services/wa/session-manager.mjs services/wa/webhook-dispatcher.mjs`.
+- `services/wa/db.mjs` left at the server-local revision (still
+  contains the un-pushed db hotfixes; the new `server.mjs` only imports
+  symbols already exported by that file).
+- `services/wa/Dockerfile` patched to also COPY `session-manager.mjs`
+  and `webhook-dispatcher.mjs`.
+- `compose.yaml` patched in-place to add the new env block under the
+  `wa` service (kept `SESSIONS_DIR=/app/data/sessions` so the existing
+  `/data/getouch/wa:/app/data` volume keeps working).
+- `.env` extended with a freshly generated 64-hex `WAPI_SECRET`,
+  `WAPI_WEBHOOK_URL=https://wapi.getouch.co/api/wa/events`, and the
+  matching `SESSIONS_DIR / DEFAULT_SESSION_ID / MAX_CONCURRENT_SESSIONS
+  / AUTO_START_DEFAULT_SESSION / AUTO_START_SESSIONS` values.
+- `docker compose build --no-cache wa && docker compose up -d
+  --force-recreate wa`. New image
+  `sha256:b947901ddf59…` started cleanly.
+- The new server logged
+  `Migrated legacy auth dir from /app/data/auth to /app/data/sessions/default`
+  and the `default` session reconnected as `60192277233` without
+  re-pairing. Confirmed live phone unaffected.
+
+The local Dockerfile fix is also applied in the `getouch.co` git repo so
+future builds on any host include the new files.
+
+### Live validation against `wa.getouch.co` (2026-04-26, post-deploy)
+
+All checks executed against the public origin
+(Cloudflare → Caddy → `getouch-wa:3001`), not via container shortcut.
+
+```
+GET /health
+  HTTP 200
+  body: {"status":"ok","sessions":2,"defaultSessionId":"default",
+         "defaultStatus":"connected","defaultPhone":"60192277233",
+         "whatsapp":"connected","webhook":{...}}
+
+GET /api/sessions/default/status   (no header)
+  HTTP 401  {"error":{"code":"UNAUTHORIZED",
+                      "message":"Missing or invalid WAPI secret"}}
+
+GET /api/sessions/default/status   (X-WAPI-Secret: <wrong>)
+  HTTP 401  same error body
+
+GET /api/sessions/default/status   (X-WAPI-Secret: <correct>)
+  HTTP 200  {sessionId:"default", status:"connected",
+             phoneNumber:"60192277233", messages24h:{...}, ...}
+
+POST /api/sessions/test-live       (X-WAPI-Secret: <correct>)
+  HTTP 200  {sessionId:"test-live", status:"connecting",
+             qr:"data:image/png;base64,iVBORw0…"}
+
+POST /api/sessions/..%2Fevil       (X-WAPI-Secret: <correct>)
+  HTTP 400  {"error":{"code":"BAD_REQUEST",
+                      "message":"Invalid sessionId format"}}
+
+DELETE /api/sessions/test-live     (X-WAPI-Secret: <correct>)
+  HTTP 200  {"ok":true,"existed":true}
+```
+
+Admin UI:
+
+- `GET https://wa.getouch.co/` returns ~85 KB HTML containing
+  `Multi-tenant Sessions` panel header, the `loadSessions()` JS,
+  and 18 multi-session related markers.
+- Operator can now browse sessions, view per-session QR, reset, and
+  delete from the admin console.
+
+### Status after live fix
+
+- `default` session: connected (phone `60192277233`).
+- `test-live` second session: created, reached `connecting` and emitted
+  a real QR data URL (proving the per-session Baileys socket boot path
+  works on prod). Then deleted cleanly without disturbing `default`.
+- Webhook dispatcher: enabled and pointing at
+  `https://wapi.getouch.co/api/wa/events`. **WAPI must mirror
+  `WAPI_SECRET`** (the secret is in `/home/deploy/apps/getouch.co/.env`
+  on the deploy host) so it can verify `X-WA-Signature` HMACs.
+
+### Still pending after this fix
+
+- Full concurrent two-real-number live test (only one paired number on
+  hand). The second slot has been proven via the `test-live` QR scan
+  path but no second real number was paired during this round.
+- Persistent disk-backed webhook retry queue. The dispatcher still
+  retries in-memory only (5 s → 1 h, drop after 24 h). Out of scope
+  for this round to keep the live fix small and reversible.
+- Wire `WAPI_SECRET` into the WAPI app environment so `wa-gateway.ts`
+  presents the matching header when calling
+  `/api/sessions/:accountId/*`.
+
 ## 2026-04-26 Implementation Plan / Status
 
 - Status: still blocked at the gateway layer.
