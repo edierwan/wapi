@@ -41,6 +41,7 @@ async function main() {
     const counts = await pool.query<{
       countries: string;
       currencies: string;
+       units: string;
       languages: string;
       timezones: string;
       industries: string;
@@ -50,6 +51,7 @@ async function main() {
       `SELECT
          (SELECT count(*) FROM ref_countries)         AS countries,
          (SELECT count(*) FROM ref_currencies)        AS currencies,
+          (SELECT count(*) FROM ref_units)             AS units,
          (SELECT count(*) FROM ref_languages)         AS languages,
          (SELECT count(*) FROM ref_timezones)         AS timezones,
          (SELECT count(*) FROM ref_industries)        AS industries,

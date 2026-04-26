@@ -23,40 +23,6 @@ async function authForWrite(tenantSlug: string) {
   return ctx;
 }
 
-const productSchema = z.object({
-  tenantSlug: z.string(),
-  productCode: z.string().min(1).max(60),
-  name: z.string().min(1).max(200),
-  shortDescription: z.string().max(500).optional().default(""),
-  productType: z
-    .enum(["physical", "digital", "bundle", "consumable", "other"])
-    .default("physical"),
-  defaultPrice: z.string().optional().default(""),
-  currency: z.string().length(3).default("MYR"),
-  unitOfMeasure: z.string().min(1).max(20).default("pc"),
-});
-
-export async function createProductAction(formData: FormData) {
-  const data = productSchema.parse(Object.fromEntries(formData.entries()));
-  const ctx = await authForWrite(data.tenantSlug);
-  const db = requireDb();
-
-  const price = data.defaultPrice.trim();
-  await db.insert(schema.products).values({
-    tenantId: ctx.tenant.id,
-    productCode: data.productCode.trim(),
-    name: data.name.trim(),
-    shortDescription: data.shortDescription || null,
-    productType: data.productType,
-    unitOfMeasure: data.unitOfMeasure,
-    defaultPrice: price ? price : null,
-    currency: data.currency,
-  });
-
-  revalidatePath(`/t/${data.tenantSlug}/products`);
-  redirect(`/t/${data.tenantSlug}/products`);
-}
-
 const serviceSchema = z.object({
   tenantSlug: z.string(),
   serviceCode: z.string().min(1).max(60),

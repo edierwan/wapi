@@ -337,6 +337,37 @@ export const productType = pgEnum("product_type", [
   "other",
 ]);
 
+export const productStatus = pgEnum("product_status", [
+  "draft",
+  "active",
+  "inactive",
+  "archived",
+]);
+
+export const productMediaType = pgEnum("product_media_type", [
+  "image",
+  "video",
+  "document",
+]);
+
+export const productChannel = pgEnum("product_channel", [
+  "shopee",
+  "lazada",
+  "tiktok_shop",
+  "shopify",
+  "woocommerce",
+  "facebook_shop",
+  "instagram_shop",
+  "custom",
+]);
+
+export const productChannelSyncStatus = pgEnum("product_channel_sync_status", [
+  "not_synced",
+  "synced",
+  "error",
+  "disabled",
+]);
+
 export const itemStatus = pgEnum("item_status", [
   "active",
   "inactive",
@@ -452,24 +483,32 @@ export const products = pgTable(
     sku: text("sku"),
     barcode: text("barcode"),
     name: text("name").notNull(),
+    slug: text("slug"),
     shortDescription: text("short_description"),
     longDescription: text("long_description"),
     productType: productType("product_type").notNull().default("physical"),
-    status: itemStatus("status").notNull().default("active"),
+    status: productStatus("status").notNull().default("draft"),
     brand: text("brand"),
     unitOfMeasure: text("unit_of_measure").notNull().default("pc"),
     defaultPrice: numeric("default_price", { precision: 18, scale: 4 }),
+    compareAtPrice: numeric("compare_at_price", { precision: 18, scale: 4 }),
     currency: text("currency").notNull().default("MYR"),
     costPrice: numeric("cost_price", { precision: 18, scale: 4 }),
     taxCode: text("tax_code"),
     trackInventory: boolean("track_inventory").notNull().default(false),
+    aiSellingNotes: text("ai_selling_notes"),
+    aiFaqNotes: text("ai_faq_notes"),
+    tags: jsonb("tags"),
     metadata: jsonb("metadata"),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
   },
   (t) => ({
     byTenant: index("products_tenant_idx").on(t.tenantId),
+    byCategory: index("products_category_idx").on(t.categoryId),
     tenantCodeUq: uniqueIndex("products_tenant_code_uq").on(t.tenantId, t.productCode),
+    tenantSkuUq: uniqueIndex("products_tenant_sku_uq").on(t.tenantId, t.sku),
+    tenantSlugUq: uniqueIndex("products_tenant_slug_uq").on(t.tenantId, t.slug),
   }),
 );
 
@@ -489,12 +528,13 @@ export const productVariants = pgTable(
     sku: text("sku"),
     barcode: text("barcode"),
     defaultPrice: numeric("default_price", { precision: 18, scale: 4 }),
-    status: itemStatus("status").notNull().default("active"),
+    status: productStatus("status").notNull().default("active"),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
   },
   (t) => ({
     byProduct: index("product_variants_product_idx").on(t.productId),
+    tenantSkuUq: uniqueIndex("product_variants_tenant_sku_uq").on(t.tenantId, t.sku),
     productVariantUq: uniqueIndex("product_variants_product_code_uq").on(
       t.productId,
       t.variantCode,
@@ -565,7 +605,7 @@ export const productMedia = pgTable(
     variantId: uuid("variant_id").references(() => productVariants.id, {
       onDelete: "cascade",
     }),
-    mediaType: text("media_type").notNull().default("image"),
+    mediaType: productMediaType("media_type").notNull().default("image"),
     url: text("url").notNull(),
     storageKey: text("storage_key"),
     altText: text("alt_text"),
@@ -574,6 +614,72 @@ export const productMedia = pgTable(
   },
   (t) => ({
     byProduct: index("product_media_product_idx").on(t.productId),
+  }),
+);
+
+export const productBundles = pgTable(
+  "product_bundles",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    tenantId: uuid("tenant_id")
+      .notNull()
+      .references(() => tenants.id, { onDelete: "cascade" }),
+    parentProductId: uuid("parent_product_id")
+      .notNull()
+      .references(() => products.id, { onDelete: "cascade" }),
+    childProductId: uuid("child_product_id")
+      .notNull()
+      .references(() => products.id, { onDelete: "cascade" }),
+    childVariantId: uuid("child_variant_id").references(() => productVariants.id, {
+      onDelete: "set null",
+    }),
+    quantity: numeric("quantity", { precision: 18, scale: 4 }).notNull().default("1"),
+  },
+  (t) => ({
+    byParent: index("product_bundles_parent_idx").on(t.parentProductId),
+    bundleItemUq: uniqueIndex("product_bundles_parent_child_uq").on(
+      t.parentProductId,
+      t.childProductId,
+      t.childVariantId,
+    ),
+  }),
+);
+
+export const productChannelMappings = pgTable(
+  "product_channel_mappings",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    tenantId: uuid("tenant_id")
+      .notNull()
+      .references(() => tenants.id, { onDelete: "cascade" }),
+    productId: uuid("product_id")
+      .notNull()
+      .references(() => products.id, { onDelete: "cascade" }),
+    variantId: uuid("variant_id").references(() => productVariants.id, {
+      onDelete: "cascade",
+    }),
+    channel: productChannel("channel").notNull(),
+    externalProductId: text("external_product_id"),
+    externalVariantId: text("external_variant_id"),
+    externalSku: text("external_sku"),
+    channelTitle: text("channel_title"),
+    channelStatus: text("channel_status"),
+    channelUrl: text("channel_url"),
+    lastSyncedAt: timestamp("last_synced_at", { withTimezone: true }),
+    syncStatus: productChannelSyncStatus("sync_status").notNull().default("not_synced"),
+    syncError: text("sync_error"),
+    metadata: jsonb("metadata"),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => ({
+    byProduct: index("product_channel_mappings_product_idx").on(t.productId),
+    tenantChannelProductUq: uniqueIndex("product_channel_mappings_tenant_channel_product_uq").on(
+      t.tenantId,
+      t.channel,
+      t.productId,
+      t.variantId,
+    ),
   }),
 );
 
@@ -867,6 +973,7 @@ export type Service = typeof services.$inferSelect;
 export type BusinessNature = (typeof businessNature.enumValues)[number];
 export type ItemStatus = (typeof itemStatus.enumValues)[number];
 export type ProductType = (typeof productType.enumValues)[number];
+export type ProductStatus = (typeof productStatus.enumValues)[number];
 export type ServiceType = (typeof serviceType.enumValues)[number];
 
 /* ════════════════════════════════════════════════════════════════ */
@@ -987,6 +1094,21 @@ export const refCurrencies = pgTable(
     updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
   },
   (t) => ({ codeUq: uniqueIndex("ref_currencies_code_uq").on(t.code) }),
+);
+
+export const refUnits = pgTable(
+  "ref_units",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    code: text("code").notNull(),
+    name: text("name").notNull(),
+    description: text("description"),
+    status: text("status").notNull().default("active"),
+    sortOrder: integer("sort_order").notNull().default(0),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => ({ codeUq: uniqueIndex("ref_units_code_uq").on(t.code) }),
 );
 
 export const refLanguages = pgTable(
@@ -1438,6 +1560,7 @@ export const followupSteps = pgTable(
 
 export type RefCountry = typeof refCountries.$inferSelect;
 export type RefCurrency = typeof refCurrencies.$inferSelect;
+export type RefUnit = typeof refUnits.$inferSelect;
 export type RefLanguage = typeof refLanguages.$inferSelect;
 export type RefTimezone = typeof refTimezones.$inferSelect;
 export type RefIndustry = typeof refIndustries.$inferSelect;

@@ -29,6 +29,13 @@
       "when": 1777136299992,
       "tag": "0003_tired_shadow_king",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1777219202712,
+      "tag": "0004_breezy_scarecrow",
+      "breakpoints": true
     }
   ]
 }

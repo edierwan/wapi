@@ -53,6 +53,25 @@ ON CONFLICT (code) DO UPDATE
       sort_order  = EXCLUDED.sort_order,
       updated_at  = now();
 
+-- ── units ──────────────────────────────────────────────────────────────────
+INSERT INTO ref_units (code, name, description, sort_order) VALUES
+  ('pc',      'Piece',   'Single sellable item or unit.', 10),
+  ('box',     'Box',     'Sold in a box carton.', 20),
+  ('pack',    'Pack',    'Sold in a pack.', 30),
+  ('bottle',  'Bottle',  'Sold by bottle.', 40),
+  ('set',     'Set',     'Sold as a set or bundle pack.', 50),
+  ('kg',      'Kilogram','Measured in kilograms.', 60),
+  ('g',       'Gram',    'Measured in grams.', 70),
+  ('litre',   'Litre',   'Measured in litres.', 80),
+  ('ml',      'Millilitre', 'Measured in millilitres.', 90),
+  ('hour',    'Hour',    'Time-based unit by hour.', 100),
+  ('session', 'Session', 'Appointment, visit, or treatment session.', 110)
+ON CONFLICT (code) DO UPDATE
+  SET name        = EXCLUDED.name,
+      description = EXCLUDED.description,
+      sort_order  = EXCLUDED.sort_order,
+      updated_at  = now();
+
 -- ── countries ──────────────────────────────────────────────────────────────
 INSERT INTO ref_countries (
   iso2_code, iso3_code, name, phone_country_code,
@@ -205,6 +224,7 @@ COMMIT;
 -- Sanity:
 --   SELECT (SELECT count(*) FROM ref_countries)        AS countries,
 --          (SELECT count(*) FROM ref_currencies)       AS currencies,
+--          (SELECT count(*) FROM ref_units)            AS units,
 --          (SELECT count(*) FROM ref_languages)        AS languages,
 --          (SELECT count(*) FROM ref_timezones)        AS timezones,
 --          (SELECT count(*) FROM ref_industries)       AS industries,
