@@ -24,7 +24,8 @@ Everything after is post-MVP.
 	- minimal product / service create flow on `/t/{slug}/products` and `/t/{slug}/services`
 - Phase 5 remaining work for later tranches: CSV import, MinIO media uploads, full wizard steps 3–7
 - Phase 6 contract-ready WAPI surface is shipped (gateway client wrapper, HMAC-verified webhook receivers, `whatsapp_sessions` lifecycle, owner/admin connect UI, outbound worker skeleton, Dify provider resolution, secret resolver, Dify client, tenant-scoped context assembly, manual HITL draft action). Live gateway behavior is still gated on [Request 05](../request/05-wa-gateway-multitenancy.md).
-- Phase 7 schema foundation is shipped, but campaign UI and queue-driven behavior are still pending.
+- Phase 7 functional tranche (composer, variant editor, safety review, follow-up sequence UI, dispatcher into the existing queue) is shipped on 2026-04-28. AI-drafted variants, reply-first runtime gating, rate-limit/warm-up, the long-running follow-up executor, and KPIs are still pending.
+- Omnichannel expansion is planned after MVP; Phase 6 remains intentionally WhatsApp-first while shared inbox and campaign abstractions should be designed to expand later.
 
 This distinction matters:
 
@@ -163,32 +164,61 @@ Already shipped in this phase:
 	- `campaign_recipients`
 	- `followup_sequences`
 	- `followup_steps`
+- functional tranche (2026-04-28):
+	- tenant-scoped server module `src/server/campaigns.ts` (list, get, create,
+	  update, delete, status transitions, audience preview, recipients
+	  materialization)
+	- internal safety rule engine `src/server/campaign-safety.ts` (length,
+	  prohibited words from `tenant_business_profiles.prohibited_words`,
+	  opt-out hint, all-caps shout) producing one-line summary + findings
+	- dispatcher `src/server/campaign-dispatcher.ts` that inserts
+	  `message_queue` rows with `purpose='campaign'` and never invents a
+	  parallel queue
+	- follow-up sequences server module `src/server/followups.ts`
+	- tenant pages `/t/[slug]/campaigns`, `/t/[slug]/campaigns/[id]`,
+	  `/t/[slug]/followups`, `/t/[slug]/followups/[id]`
+	- status webhook now mirrors lifecycle into `campaign_recipients` via
+	  `queue_id`
+	- composer covers draft → safety_review → scheduled → sending → cancelled
+	  with owner/admin RBAC
+	- Campaigns nav entry de-`soon`-ed
 
 Still pending to complete the functional Phase 7 tranche:
 
-- `campaigns`, `campaign_audiences`, `campaign_messages`, `campaign_events`
-- `campaign_safety_reviews` (internal checks + auto-fixes + user summary)
-- AI drafter reads Business Brain + products/services
-- **Smart Message Variation Engine** (A/B/C/D variants, grounded)
-- **Reply-First Campaign Mode**
-- **Campaign Safety Assistant** (auto-optimise; user sees summary, not checklist)
-- Human approval UI (draft → pending_approval → approved → scheduled)
-- BullMQ (or pg-boss) queue for scheduled + safe-send
-- Per-number rate limit + warm-up mode
-- Basic campaign KPIs
+- AI drafter reads Business Brain + products/services (Dify-backed
+  variant suggestion; manual editor is fully shipped today)
+- Reply-first runtime gating in the dispatcher
+- Per-number rate limit + warm-up mode in the worker
+- Long-running follow-up executor / scheduler
+- Basic campaign KPIs panel
+- Consent (`contact_consents`) integration inside the safety review
 
 **End of MVP**
 
 ---
 
-## Phase 8 — Smart inbox + realtime + reply-to-action
+## Phase 8 — Omnichannel inbox + realtime + reply-to-action
 
 - `inbox_threads`, `inbox_messages`, `message_events`, `ai_suggested_replies`, `assignments`
 - Inbound → Postgres LISTEN/NOTIFY → SSE to browser
+- channel-agnostic inbox/domain model so shared surfaces do not assume WhatsApp-only identity or webhook shapes
+- connector / adapter pattern for future channels
 - **Hot Lead Detection** classifier (Dify agent)
 - **Follow-up Engine** (suggest-and-create tasks)
 - Reply Funnel / Conversation Funnel analytics
 - Agent assignment, timelines, per-agent metrics
+
+Planned channel rollout after MVP:
+
+- Wave 1: WhatsApp hardening, Facebook Messenger, Instagram
+- Wave 2: website live chat, email, LINE OA
+- Wave 3: TikTok, Shopee, Lazada with marketplace-aware modeling where needed
+
+Important guardrail for omnichannel expansion:
+
+- do not overload `whatsapp_sessions` into a fake universal channel table
+- keep WAPI tenant ownership and AI isolation rules identical across all channels
+- marketplace connectors may need order/comment semantics beyond plain chat threads
 
 ## Phase 9 — Analytics + admin console v1 + audit + abuse monitor
 
@@ -234,7 +264,7 @@ Admin expectation before this phase:
 - Dedicated Dify per tenant
 - Full MCP automation
 - Accounting / GL
-- Multi-channel (IG / Messenger / web chat)
+- Omnichannel inbox beyond the current WhatsApp-first foundation (IG / Messenger / web chat / marketplace connectors)
 
 These are real demands — they are just later.
 

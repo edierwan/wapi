@@ -55,6 +55,7 @@ export async function POST(req: NextRequest) {
     .select({
       id: schema.messageQueue.id,
       tenantId: schema.messageQueue.tenantId,
+      campaignId: schema.messageQueue.campaignId,
     })
     .from(schema.messageQueue)
     .where(eq(schema.messageQueue.id, externalRef))
@@ -84,6 +85,17 @@ export async function POST(req: NextRequest) {
     .update(schema.messageQueue)
     .set(patch)
     .where(eq(schema.messageQueue.id, externalRef));
+
+  // Mirror lifecycle into campaign_recipients when this queue row belongs
+  // to a campaign. The recipient row was created with queueId=this.id
+  // by the dispatcher, so we update by queueId only — still tenant-safe
+  // because the campaign chain itself is tenant-scoped.
+  if (row.campaignId) {
+    await db
+      .update(schema.campaignRecipients)
+      .set({ status, updatedAt: new Date() })
+      .where(eq(schema.campaignRecipients.queueId, externalRef));
+  }
 
   return NextResponse.json({ ok: true });
 }
