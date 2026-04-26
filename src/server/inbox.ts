@@ -1,5 +1,5 @@
 import "server-only";
-import { and, desc, eq, sql } from "drizzle-orm";
+import { and, desc, eq, inArray, sql } from "drizzle-orm";
 import { requireDb, schema } from "@/db/client";
 import {
   mergeConversationSummaries,
@@ -136,7 +136,7 @@ export async function listConversations(
     .where(
       and(
         eq(schema.inboundMessages.tenantId, tenantId),
-        sql`${schema.inboundMessages.fromPhone} = any(${phones})`,
+        inArray(schema.inboundMessages.fromPhone, phones),
         sql`${schema.inboundMessages.receivedAt} = (
           select max(i2.received_at) from inbound_messages i2
           where i2.tenant_id = ${tenantId}
@@ -157,7 +157,7 @@ export async function listConversations(
       and(
         eq(schema.messageQueue.tenantId, tenantId),
         sql`${schema.messageQueue.purpose} <> 'otp'`,
-        sql`${schema.messageQueue.toPhone} = any(${phones})`,
+        inArray(schema.messageQueue.toPhone, phones),
         sql`coalesce(${schema.messageQueue.sentAt}, ${schema.messageQueue.createdAt}) = (
           select max(coalesce(q2.sent_at, q2.created_at)) from message_queue q2
           where q2.tenant_id = ${tenantId}
@@ -196,7 +196,7 @@ export async function listConversations(
       select i.from_phone as phone, count(*)::int as awaiting
       from inbound_messages i
       where i.tenant_id = ${tenantId}
-        and i.from_phone = any(${phones})
+        and i.from_phone = any(${sql`array[${sql.join(phones.map((p) => sql`${p}`), sql`, `)}]::text[]`})
         and i.received_at > coalesce(
           (select max(coalesce(q.sent_at, q.created_at)) from message_queue q
             where q.tenant_id = ${tenantId}
@@ -228,7 +228,7 @@ export async function listConversations(
     .where(
       and(
         eq(schema.contacts.tenantId, tenantId),
-        sql`${schema.contacts.phoneE164} = any(${phones})`,
+        inArray(schema.contacts.phoneE164, phones),
       ),
     );
   const contactByPhone = new Map<string, (typeof contactRows)[number]>();

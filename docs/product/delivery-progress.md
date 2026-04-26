@@ -1,6 +1,6 @@
 # WAPI Delivery Progress
 
-Last updated: 2026-04-26 (Phase 8b worker supervision + system-health hook)
+Last updated: 2026-04-26 (Phase 8b interactive defects A+B fixed)
 
 ## Primary delivery ledger
 
@@ -23,6 +23,7 @@ Last updated: 2026-04-26 (Phase 8b worker supervision + system-health hook)
 - **Phase 7 remaining slice is shipped** (consent-aware safety review, reply-first runtime gating in the dispatcher, per-account warm-up + rate limit honored by the outbound worker, long-running follow-up auto-trigger executor, AI variant suggestion via Dify HITL, KPI panel on campaign detail).
 - The Dify multi-tenant architecture plan is now updated to reflect actual shipped schema versus missing runtime integration.
 - Omnichannel expansion has been reviewed as a later roadmap track; current shipped transport integration remains WhatsApp-first and should not be mistaken for the final channel model.
+- Local Phase 8b worker runtime defect fixed: standalone worker scripts no longer die on `Cannot find module 'server-only'` before the supervisor can run.
 
 ## Admin page status
 
@@ -56,6 +57,7 @@ Interpretation for the next Coder AI round:
 
 ### Local build validation
 
+- `pnpm test:unit` passes (`11` tests).
 - `pnpm typecheck` passes.
 - `pnpm build` passes.
 - Build output includes:
@@ -253,34 +255,72 @@ request doc is now in one of three states:
 
 - Automated-verifiable: confirmed (build/typecheck pass; routes registered;
   every server module filters by `tenant_id`).
-- Interactive: pending tester pass for contact CRUD + tag toggle, Business
+- Interactive: partially advanced on `wapi-dev` with the clinic tenant.
+  - contact create succeeded for `Manual Test Contact`
+  - tag create succeeded for `vip`
+- Still pending: contact edit/delete, per-contact tag toggle, Business
   Brain CRUD, `Recompute & save`, product/service create form, and
   hidden-field tamper.
-- No real defects found in this round; Phase 5 tranche 1 stays shipped.
+- No real Phase 5 defect found in the exercised contact/tag path.
+
+### Test 16 — Phase 8b worker supervision
+
+- Automated-verifiable: partially advanced in this pass.
+  - `pnpm test:unit` passes for the worker supervisor core helpers.
+  - `pnpm worker:outbound` now reaches the supervised runtime path instead
+    of crashing immediately on `server-only` import resolution.
+  - `pnpm worker:followups` now reaches the supervised runtime path instead
+    of crashing immediately on `server-only` import resolution.
+  - Both one-shot worker commands wrote heartbeat files in the macOS temp
+    heartbeat directory with `runMode="once"`, `totalTicks=1`,
+    `totalErrors=1`, and populated `lastError` values.
+- Remaining local blocker for full script success: this checkout does not
+  currently provide a usable `DATABASE_URL`, so the workers cannot complete
+  a successful DB-backed tick from this environment.
+- Interactive: partially advanced on `wapi-dev`.
+  - signed-in super-admin browser pass for `/admin/system-health`
+    succeeded
+  - the page rendered as a real module, not a placeholder
+- Still pending: loop mode, SIGINT shutdown, and environment-backed worker
+  success path.
 
 ### Test 13 — Phase 6 contract-ready
 
 - Automated-verifiable: confirmed. HMAC verify is timing-safe; cross-tenant
   guards (`status` webhook + Dify provider resolver) are in place;
-  `wa-gateway.ts` is `server-only`; `isValidConversationKey` rejects bare
-  phones; `assembleTenantContext` filters every query by `tenant_id`.
-- Interactive: pending tester pass for the connect/reset/disconnect flow,
+  `isValidConversationKey` rejects bare phones; `assembleTenantContext`
+  filters every query by `tenant_id`.
+- Interactive: partially advanced on `wapi-dev` with the clinic tenant.
+  - adding a WhatsApp account row succeeded; the row rendered as `pending`
+  - clicking `Connect` caused a server-side application error instead of a
+    graceful pending/error state on the page
+- Real defect found: `/t/{slug}/whatsapp` connect flow currently crashes on
+  `wapi-dev` for the clinic tenant (app error digest `3539567216`).
+- Still pending: reset/disconnect after the connect defect is fixed,
   curl-driven webhook signature exercise, live Dify call with a real key,
   outbound-worker dry-run.
-- No real defects found in this round; Phase 6 contract-ready stays shipped.
 
 ### Test 11 — Admin console shell
 
 - Automated-verifiable: confirmed. All 11 admin routes register; layout
   RBAC gate is server-side via `system.admin.access`.
-- Interactive: pending tester pass for super-admin happy path and tile
-  click-through. Placeholder `Coming soon` modules are expected and are
-  NOT regressions.
-- No real defects found in this round.
+- Interactive: partially advanced on `wapi-dev`.
+  - super-admin login for `admin@getouch.co` landed on `/admin`
+  - `/admin/system-health` rendered successfully as a real admin page
+  - non-system-admin clinic tenant user was redirected to
+    `/access-denied?reason=admin`
+- Still pending: placeholder tile click-through across all modules and the
+  mobile/narrow-viewport visual pass.
+- No real admin-shell defect found in the exercised paths.
 
 ## Local environment note
 
 - `pnpm db:seed` exiting with code `1` in one local run was caused by a missing local `.env.local`, not by an application defect in the shipped Phase 5/6/7 work.
+- Phase 8b one-shot worker commands now run through the supervisor, but a
+  DB-backed success tick still requires a local `.env.local` with a valid
+  `DATABASE_URL`.
+- The old local Phase 8b `Cannot find module 'server-only'` worker-runtime
+  failure is fixed.
 
 ## Release-hardening pass (2026-04-26)
 
@@ -350,17 +390,17 @@ defects.
 
 ### Pending interactive checks (still owned by the human tester)
 
-- **Test 08**: contacts CRUD + tag toggle, Business Brain CRUD,
+- **Test 08**: contact edit/delete, tag toggle, Business Brain CRUD,
   `Recompute & save`, product/service create form, hidden-field tamper.
-- **Test 11**: signed-in super-admin happy path, placeholder tile
-  click-through, non-admin redirect to `/access-denied?reason=admin`,
-  mobile/narrow viewport.
-- **Test 13**: connect/reset/disconnect on `/t/{slug}/whatsapp`,
-  curl-driven webhook signature exercise, live Dify call with a real
-  `DIFY_DEFAULT_API_KEY`, outbound-worker dry-run with a queued row.
-- **Test 14**: composer happy path A–G in a browser session, plus the
-  H1–H6 tranche-4 paths for consent / reply-first / rate limit /
-  follow-up executor / AI variant suggestion / KPI panel.
+- **Test 11**: placeholder tile click-through across all modules and the
+  mobile/narrow-viewport visual pass.
+- **Test 13**: fix the clinic-tenant connect crash first, then re-run
+  connect/reset/disconnect; still pending curl-driven webhook signature
+  exercise, live Dify call with a real `DIFY_DEFAULT_API_KEY`, and an
+  outbound-worker dry-run with a queued row.
+- **Test 14**: cross-tenant URL probe, worker dry-run with a
+  campaign-queued row, status-webhook replay, and tranche-H runtime
+  checks beyond the exercised create/review/schedule path.
 
 ### Blockers carried forward
 
@@ -445,12 +485,13 @@ Read-only first slice — composing / replying lands in a later slice.
 
 ### Pending interactive checks (Phase 8a)
 
-- Browser pass for the list view (sort order, counters, `+N new` chip).
-- Browser pass for the detail view (timeline ordering, OTP suppression,
-  contact link target).
-- Cross-tenant URL probe: signed-in Tenant B visiting Tenant A's
-  inbox detail URL must 404.
-- Phone with no `contacts` row renders a usable list + detail view.
+- Empty-state browser pass succeeded on a fresh tenant with no message rows.
+- Real defect found on `wapi-dev`: after queuing a standard-send campaign
+  row for the clinic tenant, `/t/clinic-getouch-test/inbox` crashed with a
+  server-side application error instead of rendering the outbound-only
+  conversation (`digest 3602993270`).
+- Still pending after that defect is fixed: list view with real rows,
+  detail timeline, cross-tenant URL probe, and phone-without-contact path.
 
 ### Phase 8a out of scope (not regressions)
 
@@ -552,19 +593,14 @@ redesign, no fake multi-channel worker, no schema churn.
   tick; SIGINT and confirm clean shutdown.
 - Run with broken `DATABASE_URL` and confirm `lastError` populated and
   `totalErrors` increments in the heartbeat.
-- Sign in as `SYSTEM_SUPER_ADMIN`, visit `/admin/system-health`, and
-  confirm worker rows + queue card render the live data the script
-  produced.
+- Sign in as `SYSTEM_SUPER_ADMIN`, visit `/admin/system-health` on
+  production, and confirm worker rows + queue card render the live data.
 
 ### Known local-env note (not a Phase 8b regression)
 
-- Running the worker scripts on a clean checkout without
-  `node_modules` resolved by Next will fail with
-  `Cannot find module 'server-only'` in code paths that import server
-  modules. This is the same `.env.local` / install-state class the
-  existing ledger already documents for `pnpm db:seed`. The
-  one-shot/loop wrappers themselves are correct; the code path is
-  validated by typecheck, build, and unit tests.
+- Running the worker scripts without a valid local `DATABASE_URL` still
+  prevents a successful DB-backed tick. The old `server-only` runtime
+  crash was fixed in this pass.
 
 ### Phase 8b out of scope (not regressions)
 
@@ -576,11 +612,102 @@ redesign, no fake multi-channel worker, no schema churn.
 - Live multi-tenant WhatsApp send (Request 05).
 - Smart Customer Memory writes (Phase 8c).
 
+## Phase 8b interactive pass — defects fixed (2026-04-26)
+
+A real interactive pass on `wapi-dev.getouch.co` confirmed:
+
+- `admin@getouch.co` login lands on `/admin`.
+- `/admin/system-health` renders for system admin.
+- A non-system-admin clinic tenant user is correctly redirected to
+  `/access-denied?reason=admin`.
+- Clinic tenant registration succeeded.
+- Phase 5 contact create + tag create succeeded.
+- Phase 6 WhatsApp account row create succeeded.
+- Phase 7 campaign draft + variant + safety review + schedule succeeded.
+
+Two real defects were uncovered and have been fixed in this pass.
+
+### Defect A — `/t/{slug}/whatsapp` Connect crashed the page (digest 3539567216)
+
+Root cause: `connectSessionAction` (and `resetSessionAction`) threw when
+the configured gateway returned a non-2xx response. Until Request 05
+lands the gateway can be reachable but reply with a multi-tenant-unaware
+error; throwing in a server action surfaces as a Next.js
+application-error overlay for the tenant operator.
+
+Fix: in `src/app/t/[tenantSlug]/whatsapp/actions.ts`, when the gateway
+call fails, log the error, persist `whatsapp_sessions.status='error'`
+on the local row, `revalidatePath`, and return cleanly. The session
+state badge now surfaces the failure instead of a crash. No gateway
+work is moved into WAPI; Request 05 stays explicit as the external
+blocker.
+
+### Defect B — `/t/{slug}/inbox` crashed when the tenant had outbound-only queue rows (digest 3602993270)
+
+Root cause: `src/server/inbox.ts` used raw `sql\`column = any(${jsArray})\``
+in three list-aggregate queries plus the awaiting-reply correlated
+query. Drizzle's `sql` template tag spreads JS arrays as
+comma-separated `$1, $2, …` parameters, which makes `any($1, $2, …)`
+invalid Postgres. The path was only triggered when a tenant had at
+least one queue row whose phone made it into the `phones` array — i.e.
+exactly the queued-campaign-row scenario from the interactive pass.
+
+Fix: replace the three list-side `= any(${phones})` predicates with
+drizzle's `inArray(column, phones)` helper, and rewrite the awaiting
+correlated query's array binding as
+`any(array[…]::text[])` via `sql.join`. Tenant scoping is preserved on
+every query (`tenant_id` filter unchanged). Identity stays
+`(tenant_id, normalized_phone_number)`. No schema change. No
+`whatsapp_sessions` access. The pure merge logic in `inbox-core.ts`
+already covered the outbound-only conversation case in unit tests
+(`mergeConversationSummaries sorts by latest activity, keeps
+contact-less conversations, and truncates previews`).
+
+### Tests run after the fix
+
+- `pnpm test:unit` — pass (11 tests across `inbox-core` and
+  `worker-supervisor-core`).
+- `pnpm typecheck` — pass.
+- `pnpm build` — pass; `/admin/system-health`, `/t/[tenantSlug]/inbox`,
+  `/t/[tenantSlug]/inbox/[phone]`, and `/t/[tenantSlug]/whatsapp`
+  routes register unchanged.
+- Code-audit invariants verified:
+  - tenant scoping unchanged on every fixed query
+  - no cross-tenant data path introduced
+  - no schema churn
+  - WhatsApp gateway code remains server-side only
+  - Smart Customer Memory seam intact
+
+### Files changed in this pass
+
+- `src/server/inbox.ts` — `inArray` for phone-list filters; awaiting
+  query rebound as `any(array[…]::text[])`.
+- `src/app/t/[tenantSlug]/whatsapp/actions.ts` — graceful error path
+  for connect + reset; no throws on gateway non-2xx.
+
+### Pending interactive checks
+
+- Re-run Connect on `/t/clinic-getouch-test/whatsapp` and confirm the
+  session badge flips to `error` (no crash, no overlay).
+- Re-load `/t/clinic-getouch-test/inbox` after queueing a standard-send
+  campaign row and confirm the conversation list renders with the
+  outbound-only row.
+- The remaining manual flows from Tests 08, 11, 13, 14, 15, 16 still
+  owed by the interactive tester.
+
+### Still blocked externally
+
+- **Request 05** remains the external blocker for live multi-tenant
+  WhatsApp QR / send / status traffic. WAPI's WhatsApp surface no
+  longer crashes the tenant page when the gateway is not yet
+  multi-tenant aware; that is the only WAPI-side adjustment.
+
 ## Blockers and limits in this pass
 
-- I do not have the current super-admin password in this conversation, so I could not complete the signed-in admin browser checks from Test 11.
-- I could not perform the fully interactive onboarding/browser checks from Test 08 without a prepared login session and test-tenant flow in this pass.
-- OTP is already confirmed working by the human tester, so I did not reopen that path.
+- Signed-in browser checks on `wapi-dev` are now possible and were used in
+  this pass.
+- The fresh clinic tenant is useful for tenant-flow coverage, but it starts
+  without seeded historical message data.
 - Request 05 remains the external gateway blocker for true multi-tenant WhatsApp readiness.
 
 ## External dependency status
