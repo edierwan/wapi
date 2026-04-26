@@ -93,8 +93,8 @@ export default async function AdminLayout({
           <div className="sticky top-14">
             <AdminSidebar />
             <div className="border-t border-[var(--border)] p-3 text-[11px] leading-snug text-[var(--muted-foreground)]">
-              Full admin modules ship progressively. Most tiles are
-              placeholders until Phase 8.
+              Full admin modules ship progressively. This console now
+              mixes live operational modules with clearly-staged placeholders.
             </div>
           </div>
         </aside>

@@ -36,7 +36,7 @@ Everything after is post-MVP.
 This distinction matters:
 
 - shipped schema or shell does not mean the full phase is done
-- placeholder admin modules are expected until the admin-module tranche lands later
+- the initial admin-module tranche is now partially shipped; only billing, audit, and abuse remain placeholder-only
 - gateway multi-tenancy remains the main external blocker for true WhatsApp platform readiness
 
 ---
@@ -205,6 +205,22 @@ Phase 7 implementation guardrail after shipment:
 ---
 
 ## Phase 8 — Omnichannel inbox + realtime + reply-to-action
+
+Already shipped in the admin tranche during this phase:
+
+- `/admin/users` — test-ops user directory with reset/delete safeguards
+- `/admin/tenants` — workspace directory
+- `/admin/wa-sessions` — WAPI-side WhatsApp session monitor
+- `/admin/jobs` — queue and worker status snapshot
+- `/admin/ai` — AI provider registry/status
+- `/admin/settings` — read-only runtime/config summary
+
+Still pending later in the admin roadmap:
+
+- `/admin/billing`
+- `/admin/audit`
+- `/admin/abuse`
+- deeper tenant detail pages and audited support-mode flows
 
 - `inbox_threads`, `inbox_messages`, `message_events`, `ai_suggested_replies`, `assignments`
 - Inbound → Postgres LISTEN/NOTIFY → SSE to browser
