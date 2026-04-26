@@ -837,7 +837,7 @@ contact-less conversations, and truncates previews`).
 
 ### Request 05 — gateway multi-tenancy
 
-Partially unblocked — gateway refactor shipped on the gateway side; live two-number test still pending.
+Partially unblocked — multi-session gateway is now **live on `wa.getouch.co`**; full two-real-number live test still pending.
 
 - Gateway refactor round complete on `getouch.co/services/wa`. WAPI-side is not being patched further unless a contract mismatch is found.
 - New gateway runtime: `services/wa/session-manager.mjs` + `services/wa/webhook-dispatcher.mjs` + refactored `services/wa/server.mjs`.
@@ -847,9 +847,33 @@ Partially unblocked — gateway refactor shipped on the gateway side; live two-n
 - Admin UI now renders a multi-tenant sessions table (status, phone, last seen, msgs 24h, QR view, reset, delete) with summary chips and 5s auto-refresh; the existing single-session card stays as the default-session view.
 - Outbound webhook dispatcher delivers `qr`, `connected`, `disconnected`, `message.inbound`, `message.status`, `session.deleted` to `WAPI_WEBHOOK_URL` with HMAC-SHA256 of the raw body in `X-WA-Signature`. Retry is in-memory exponential backoff (5s → 1h cap, drop after 24h); persistent disk-backed retry is documented as pending.
 - Local validation against a fresh `SESSIONS_DIR=/tmp/wa-test-sessions`: 401 with no/wrong `X-WAPI-Secret`, two sessions A and B isolated, reset A keeps B, delete A keeps B, legacy `/api/status` runs through `DEFAULT_SESSION_ID`, path-traversal probe returns 400. Full results recorded in [docs/request/05-wa-gateway-multitenancy.md](../request/05-wa-gateway-multitenancy.md).
-- Live concurrent two-number WhatsApp test is still pending (only one real test number available).
 - Compose: existing persistent volume `/data/getouch/wa:/app/data` is preserved. `SESSIONS_DIR` defaults to `/app/data/sessions` and the legacy `/app/data/auth` content auto-migrates into `/app/data/sessions/default` on first boot, so the current pairing is not lost.
-- WAPI Phase 6 schema is ready to receive gateway integration; WAPI contract-ready app-side integration is shipped; the remaining external dependency is the live concurrent multi-tenant verification on `wa.getouch.co` after Coolify deploy.
+
+#### 2026-04-26 round 2 — live deploy fix
+
+After the first push, the live `wa.getouch.co` was still serving the OLD single-session UI because that host is **not** Coolify-managed; it runs from a manual `docker compose` checkout at `/home/deploy/apps/getouch.co` that was stuck at commit `36ecee3`. Two more issues were fixed at the same time:
+
+- `services/wa/Dockerfile` only copied `server.mjs db.mjs ui.mjs` — it had to be patched to also COPY `session-manager.mjs` and `webhook-dispatcher.mjs`. The same fix is now committed in the `getouch.co` repo so future builds elsewhere will not silently miss the new files.
+- A 64-hex `WAPI_SECRET` was generated and added to the live `.env`, plus the new env block (`WAPI_WEBHOOK_URL`, `SESSIONS_DIR`, `DEFAULT_SESSION_ID`, `MAX_CONCURRENT_SESSIONS`, `AUTO_START_DEFAULT_SESSION`, `AUTO_START_SESSIONS`).
+- Legacy `/app/data/auth` was auto-migrated into `/app/data/sessions/default`. The paired number `60192277233` reconnected without a fresh QR scan.
+- Pre-change WA files were backed up on the deploy host at `/home/deploy/backups/wa-pre-multisession-20260426-155326/` (server.mjs, db.mjs, ui.mjs, .env.example, Dockerfile, package.json, compose.yaml, .env, plus `*.diff` files capturing the un-pushed local hotfixes that were on the live host).
+
+Live verification on `https://wa.getouch.co`:
+
+- `GET /health` → `200`, `sessions: 2`, `defaultStatus: connected`, `defaultPhone: 60192277233`, webhook snapshot present.
+- `GET /api/sessions/default/status` without secret → `401 UNAUTHORIZED`. With wrong secret → `401`. With correct secret → `200` per-session snapshot.
+- `POST /api/sessions/test-live` with secret → `200`, status `connecting`, real `data:image/png;base64,…` QR returned. Confirms a second concurrent Baileys socket boots cleanly on prod.
+- `POST /api/sessions/..%2Fevil` → `400 BAD_REQUEST` (path-traversal blocked).
+- `DELETE /api/sessions/test-live` → `200 {ok:true,existed:true}`. `default` session unaffected.
+- Admin UI at `https://wa.getouch.co/` renders the new "Multi-tenant Sessions" panel above the existing default-session card.
+
+Still pending after this fix:
+
+- Full two-real-number paired live test (one real number paired; second slot proven via QR-emit only).
+- Persistent disk-backed webhook retry queue. Dispatcher remains in-memory only.
+- WAPI app environment must be given the matching `WAPI_SECRET` so `wa-gateway.ts` outgoing calls present `X-WAPI-Secret`. The secret currently lives in `/home/deploy/apps/getouch.co/.env` on `100.84.14.93`.
+
+WAPI Phase 6 schema is ready to receive gateway integration; WAPI contract-ready app-side integration is shipped. Request 05 is **partially green**: multi-session runtime and admin UI live, secured, and isolation-verified; full two-number live pairing + persistent retry queue + WAPI-side secret wiring remain.
 
 ## Recommended next tranche for Coder AI
 
