@@ -203,6 +203,7 @@ Still pending to complete the functional Phase 7 tranche:
 - Inbound → Postgres LISTEN/NOTIFY → SSE to browser
 - channel-agnostic inbox/domain model so shared surfaces do not assume WhatsApp-only identity or webhook shapes
 - connector / adapter pattern for future channels
+- foundation for WAPI Customer Memory Core: customer identity, conversation continuity, and memory-backed follow-up
 - **Hot Lead Detection** classifier (Dify agent)
 - **Follow-up Engine** (suggest-and-create tasks)
 - Reply Funnel / Conversation Funnel analytics
@@ -219,6 +220,34 @@ Important guardrail for omnichannel expansion:
 - do not overload `whatsapp_sessions` into a fake universal channel table
 - keep WAPI tenant ownership and AI isolation rules identical across all channels
 - marketplace connectors may need order/comment semantics beyond plain chat threads
+
+## Planned enhancement — WAPI Customer Memory Core
+
+Preferred product-facing name: **Smart Customer Memory**
+
+This enhancement turns WAPI from only WhatsApp blast + AI automation into a
+tenant-owned memory platform where each business can remember customers,
+continue conversations naturally, and follow up with context.
+
+Planning anchors:
+
+- customer identity is scoped by `tenant_id + normalized_phone_number`
+- tenant knowledge memory remains separate from customer memory
+- conversation memory uses recent messages + compressed summary rather than
+	full raw chat replay every time
+- WAPI builds the context and owns the memory records before calling Dify
+- Dify is the workflow / agent layer, not the memory system of record
+- privacy controls must later support delete, export, tenant disable, and
+	per-customer disable
+
+Future tables and flows are documented in:
+
+- [customer-memory-core.md](../architecture/customer-memory-core.md)
+
+Recommended placement:
+
+- start foundation work with the inbox / conversation model in Phase 8
+- deepen into tenant CRM memory surfaces and lifecycle controls in later phases
 
 ## Phase 9 — Analytics + admin console v1 + audit + abuse monitor
 

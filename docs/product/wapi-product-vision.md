@@ -4,17 +4,25 @@
 
 ## Positioning (one-liner)
 
-**WAPI is an AI WhatsApp Growth Platform for SMEs.**
+**WAPI is a WhatsApp CRM + AI Memory + Follow-up Automation platform for SMEs.**
 Not a blast tool. Not a CRM bolt-on. A tenant-aware SaaS where SMEs
 connect WhatsApp, teach the system about their business, generate and
-approve campaigns, send safely, manage replies, detect hot leads, and
-automate follow-up — with AI as the default co-pilot, not the autopilot.
+approve campaigns, send safely, manage replies, remember customers,
+detect hot leads, and automate follow-up — with AI as the default
+co-pilot, not the autopilot.
 
 ## Differentiation statement
 
 > Most WhatsApp tools help businesses **send** messages.
 > WAPI helps businesses **understand replies, detect leads, personalise
-> follow-ups, and turn WhatsApp conversations into sales actions.**
+> follow-ups, remember customer context, and turn WhatsApp conversations
+> into sales actions.**
+
+## Product message
+
+> **WAPI gives every business an AI WhatsApp assistant that remembers
+> customers, understands previous conversations, and follows up
+> automatically.**
 
 ## Who it is for
 
@@ -36,8 +44,8 @@ In one dashboard, a tenant can:
 3. **Generate campaigns** with AI using that brain.
 4. **Approve + schedule** safely (human-in-the-loop).
 5. **Send through a safe queue** with anti-ban controls.
-6. **Read replies in a smart inbox** with intent classification.
-7. **Act on replies** — reply, tag, follow-up, draft order/booking.
+6. **Read replies in a smart inbox** with intent classification and customer memory context.
+7. **Act on replies** — reply, tag, follow-up, remember intent, draft order/booking.
 8. **See KPIs** — reply rate, hot leads, opt-outs, deliverability.
 
 ## What WAPI explicitly is NOT (for MVP)
@@ -68,7 +76,7 @@ In one dashboard, a tenant can:
 
 Full breakdown in [differentiators.md](./differentiators.md). Top 5:
 
-1. **Business Brain** — tenant-scoped business memory that grounds every AI call.
+1. **Business Brain + Smart Customer Memory** — tenant-scoped business memory plus customer memory that grounds every AI call and follow-up.
 2. **Human-approved AI sending** — AI drafts, never auto-sends (MVP).
 3. **Reply-to-action classifier** — not just reply tracking; next-best-action.
 4. **Safe-send engine** — per-number caps, warm-up, randomized delays, campaign safety score.

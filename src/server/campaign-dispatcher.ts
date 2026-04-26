@@ -1,5 +1,5 @@
 import "server-only";
-import { and, eq, isNull } from "drizzle-orm";
+import { and, eq, isNull, sql } from "drizzle-orm";
 import { requireDb, schema } from "@/db/client";
 import { getCampaign, listVariants } from "@/server/campaigns";
 
@@ -80,6 +80,29 @@ export async function dispatchCampaign(input: {
   let queued = 0;
   let skipped = 0;
 
+  // Reply-first gating: when the campaign sendMode is 'reply_first', a
+  // recipient is only queued if the contact has at least one inbound
+  // message on file for this tenant. This is a fail-safe guardrail so
+  // promotional content does not land cold in chats that never opted in
+  // by replying. Channel-agnostic in spirit (uses inbound_messages
+  // tenant-scoped); when more channels arrive, additional inbound tables
+  // would feed the same gate via a UNION-aware helper.
+  let priorReplySet: Set<string> | null = null;
+  if (campaign.sendMode === "reply_first") {
+    const repliers = await db
+      .select({ contactId: schema.inboundMessages.contactId })
+      .from(schema.inboundMessages)
+      .where(
+        and(
+          eq(schema.inboundMessages.tenantId, input.tenantId),
+          sql`${schema.inboundMessages.contactId} is not null`,
+        ),
+      );
+    priorReplySet = new Set(
+      repliers.map((r) => r.contactId).filter((v): v is string => !!v),
+    );
+  }
+
   for (const r of pending) {
     if (r.contactStatus !== "active") {
       await db
@@ -87,6 +110,18 @@ export async function dispatchCampaign(input: {
         .set({
           status: "excluded",
           excludedReason: `contact_status:${r.contactStatus}`,
+          updatedAt: new Date(),
+        })
+        .where(eq(schema.campaignRecipients.id, r.id));
+      skipped++;
+      continue;
+    }
+    if (priorReplySet && !priorReplySet.has(r.contactId)) {
+      await db
+        .update(schema.campaignRecipients)
+        .set({
+          status: "excluded",
+          excludedReason: "reply_first:no_prior_inbound",
           updatedAt: new Date(),
         })
         .where(eq(schema.campaignRecipients.id, r.id));

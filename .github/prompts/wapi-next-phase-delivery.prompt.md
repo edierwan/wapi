@@ -26,7 +26,7 @@ Read these files first before planning or changing code:
 ## Current truth you must preserve
 
 1. Phase 1 through Phase 4 are shipped.
-2. Phase 5, 6, and 7 are only partially shipped.
+2. Phase 5, 6, and 7 are partially shipped, with real functional slices already landed in each.
 3. The admin shell is shipped.
 4. The admin modules are intentionally still placeholder-only.
 5. The current `/admin` page showing mostly `Coming soon` is expected and should not be treated as a regression.
@@ -78,6 +78,12 @@ Read these files first before planning or changing code:
 - `campaign_recipients`
 - `followup_sequences`
 - `followup_steps`
+- Phase 7 functional tranche is already shipped:
+   - campaign composer
+   - safety review presentation
+   - follow-up sequence UI
+   - tenant-scoped campaign query surfaces
+   - queue-backed dispatcher into `message_queue`
 
 ## What is not shipped yet
 
@@ -85,24 +91,26 @@ Read these files first before planning or changing code:
 
 - Missing full admin modules is not a bug for the current stage.
 - Missing live gateway behavior is still expected while Request 05 remains externally blocked.
-- Missing Phase 7 app query/UI surfaces is expected because that phase is still at schema-foundation stage.
+- Missing some later Phase 7 capabilities does not mean Phase 7 is unshipped; the first functional tranche is already landed.
 
 ### Actual pending work
 
-- interactive validation for shipped Phase 5 and Phase 6 work
-- Phase 7 campaign UI and worker-driven behavior
+- interactive validation for shipped Phase 5, Phase 6, and Phase 7 work
+- remaining Phase 7 tranche items
 - omnichannel architecture prep for future inbox/channel rollout
+- Smart Customer Memory compatibility while shaping inbox/follow-up abstractions
 - release hardening and operational close-out
 
 ## Delivery priority for the next round
 
 Follow this order unless the user explicitly changes priority:
 
-1. Complete the remaining interactive validation for shipped Phase 5 and Phase 6 contract-ready work where credentials, browser interaction, or live secrets are still needed.
-2. Implement the functional Phase 7 tranche.
-3. Update architecture and plan docs so future inbox/campaign work can grow into Facebook, Instagram, Shopee, Lazada, and TikTok without redoing tenant or AI isolation.
+1. Complete the remaining interactive validation for shipped Phase 5, Phase 6 contract-ready, and Phase 7 work where credentials, browser interaction, or live secrets are still needed.
+2. Implement the remaining Phase 7 tranche items.
+3. Update architecture and plan docs so future inbox/campaign work can grow into Facebook, Instagram, Shopee, Lazada, and TikTok without redoing tenant, Dify, or Smart Customer Memory isolation.
 4. Keep release hardening and blocker tracking visible.
 5. Keep full admin modules for a later dedicated tranche.
+6. Do not block the future WAPI Customer Memory Core / Smart Customer Memory enhancement when shaping inbox, campaign, or follow-up abstractions.
 
 ## Required next tranche
 
@@ -123,7 +131,7 @@ Acceptance bar for Tranche 1:
 - shipped Phase 5 tranche 1 is either confirmed or any real defect is fixed
 - progress docs clearly separate automated versus interactive validation
 
-### Tranche 2 — functional Phase 7 + omnichannel-safe planning
+### Tranche 2 — remaining Phase 7 slice + omnichannel-safe planning
 
 Do this after Tranche 1 validation unless the user explicitly reprioritizes.
 
@@ -133,28 +141,29 @@ Goal:
 
 Deliverables:
 
-1. campaign composer
-2. variant editor
-3. safety review presentation
-4. follow-up sequence UI
-5. tenant-scoped campaign query surfaces
-6. worker/state behavior only where realistic and grounded by the shipped queue model
+1. AI variant suggestion via Dify HITL
+2. reply-first runtime gating
+3. per-number rate limit / warm-up mode
+4. long-running follow-up executor / scheduler
+5. campaign KPIs panel
+6. consent integration inside the safety review
 7. omnichannel-safe design updates in docs
    - identify where inbox/campaign abstractions must stay channel-agnostic
    - preserve WhatsApp-first runtime as the first adapter, not the final universal model
    - note rollout intent for Facebook, Instagram, Shopee, Lazada, and TikTok
+   - keep room for future Smart Customer Memory keyed by tenant ownership + normalized phone number
 8. doc and progress updates
 
 Important constraint:
 
-- Do not re-open shipped Phase 6/Dify foundation code unless validation finds a real defect.
+- Do not re-open shipped Phase 6/Dify foundation or already-landed Phase 7 surfaces unless validation finds a real defect.
 - Preserve the existing Dify tenant-isolation rules while Phase 7 grows.
 - Do not let new inbox/campaign concepts assume WhatsApp-only identities or webhook payload shapes.
 - Marketplace channels such as Shopee, Lazada, and TikTok may require commerce-aware modeling beyond plain chat messages.
 
 Acceptance bar for Tranche 2:
 
-- campaign draft flow works
+- remaining Phase 7 slice materially advances without regressing the already-shipped campaign/follow-up surfaces
 - tenant isolation is explicit in query paths
 - docs and tests are updated to match shipped functionality
 - omnichannel direction is documented without pretending those connectors are already shipped
@@ -189,6 +198,7 @@ As you work, maintain these delivery rules:
 5. Preserve multi-tenant Dify isolation: WAPI resolves tenant ownership first; Dify does not.
 6. Treat tenant-dedicated Dify as a later upgrade path, not the first implementation.
 7. Keep future inbox/campaign abstractions compatible with later connectors for Facebook, Instagram, Shopee, Lazada, and TikTok.
+8. Keep future inbox, CRM, and follow-up abstractions compatible with the planned WAPI Customer Memory Core / Smart Customer Memory layer.
 
 ## Required documentation updates after each tranche
 

@@ -19,6 +19,7 @@ Current truths to preserve:
 - Phase 5 tenant UI tranche 1 is already shipped.
 - Phase 6 contract-ready WAPI work is already shipped.
 - The first Dify runtime foundation is already shipped.
+- The first functional Phase 7 tranche is already shipped.
 - Request 05 is still the external blocker for live WhatsApp gateway behavior.
 - The admin shell is shipped, but the admin modules are intentionally still placeholder-only.
 - Screens like /admin/settings showing Coming soon are expected right now and are NOT regressions.
@@ -29,19 +30,20 @@ What I want next:
    - Run or prepare the remaining validation for:
      - Phase 5 interactive checks
      - Phase 6 contract-ready checks from docs/request/13-test-phase6-contract-ready.md
+       - Phase 7 checks from docs/request/14-test-phase7-campaigns.md
      - Admin shell checks
    - Fix only real defects you actually find.
-   - Do not reopen shipped Phase 6 or Dify work unless validation exposes a real bug.
+    - Do not reopen shipped Phase 6, shipped Dify foundation, or already-landed Phase 7 work unless validation exposes a real bug.
 
-2. Then move straight into functional Phase 7.
-   - Build real tenant-facing campaign behavior from the shipped schema.
+2. Then move straight into the remaining Phase 7 slice.
+    - Extend the shipped campaign/follow-up tranche without resetting it.
    - Prioritize:
-     - campaign composer
-     - variant editor
-     - safety review presentation
-     - follow-up sequence UI
-     - tenant-scoped campaign query surfaces
-     - worker/state behavior only where grounded by the existing queue model
+       - AI variant suggestion via Dify HITL
+       - reply-first runtime gating
+       - per-number rate limit / warm-up
+       - long-running follow-up executor
+       - KPIs panel
+       - consent integration in the safety review
 
 3. Keep Dify multi-tenant rules exactly intact.
    - WAPI resolves tenant ownership first.
@@ -52,9 +54,10 @@ What I want next:
 
 4. Keep omnichannel expansion compatible, but do not build full connectors yet.
    - Future targets are Facebook, Instagram, Shopee, Lazada, and TikTok.
-   - While implementing Phase 7, do not hard-code inbox/campaign abstractions to WhatsApp-only assumptions.
+   - While extending Phase 7 and shaping inbox/follow-up work, do not hard-code abstractions to WhatsApp-only assumptions.
    - Do not abuse whatsapp_sessions as a fake universal channel table.
    - If a marketplace channel needs different semantics later, leave room for that in the design.
+   - Keep the future Smart Customer Memory identity model compatible with `tenant_id + normalized_phone_number`.
 
 5. Do NOT spend this round building full admin modules unless I explicitly reprioritize.
    - /admin/tenants
@@ -70,8 +73,8 @@ What I want next:
 
 Acceptance bar for this round:
 - interactive validation status is updated clearly
-- any real defects found in shipped Phase 5/6 are fixed
-- Phase 7 functional tranche materially advances
+- any real defects found in shipped Phase 5/6/7 are fixed
+- the remaining Phase 7 slice materially advances
 - docs stay aligned with shipped truth
 - blockers remain explicit, especially Request 05
 

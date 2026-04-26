@@ -29,6 +29,7 @@
 import { and, eq, lte, sql } from "drizzle-orm";
 import { getDb, schema } from "@/db/client";
 import { sendText } from "@/server/wa-gateway";
+import { checkAndReserve } from "@/server/outbound-rate-limit";
 
 const BATCH_SIZE = 10;
 
@@ -37,20 +38,67 @@ type Row = typeof schema.messageQueue.$inferSelect;
 async function claimBatch(): Promise<Row[]> {
   const db = getDb();
   if (!db) throw new Error("DB not available");
-  // Atomic claim: flip status queued→sending and return claimed rows.
-  // Postgres UPDATE … RETURNING is sufficient for single-worker safety.
-  // For multi-worker, replace with a CTE using FOR UPDATE SKIP LOCKED.
-  const claimed = await db
-    .update(schema.messageQueue)
-    .set({ status: "sending", updatedAt: new Date() })
+
+  // Peek at queued rows whose schedule has arrived. We do NOT flip the
+  // status until rate-limit reservation passes, so a throttled row stays
+  // queued and is retried on the next worker tick.
+  const candidates = await db
+    .select()
+    .from(schema.messageQueue)
     .where(
       and(
         eq(schema.messageQueue.status, "queued"),
         lte(schema.messageQueue.scheduledAt, sql`now()`),
       ),
     )
-    .returning();
-  return claimed.slice(0, BATCH_SIZE);
+    .limit(BATCH_SIZE * 4);
+
+  const claimed: Row[] = [];
+  // Track per-account remaining minute budget across this batch so we
+  // do not over-issue when many candidates share an account.
+  const remainingByAccount = new Map<string, number>();
+
+  for (const row of candidates) {
+    if (claimed.length >= BATCH_SIZE) break;
+    if (!row.accountId) {
+      // A row without an account cannot pass tenant/account guard later.
+      // Flip it to sending so dispatchOne records the deterministic
+      // "no accountId" failure (preserves existing behavior).
+      const [bumped] = await db
+        .update(schema.messageQueue)
+        .set({ status: "sending", updatedAt: new Date() })
+        .where(eq(schema.messageQueue.id, row.id))
+        .returning();
+      if (bumped) claimed.push(bumped);
+      continue;
+    }
+
+    let remaining = remainingByAccount.get(row.accountId);
+    if (remaining === undefined) {
+      const decision = await checkAndReserve(row.accountId);
+      if (!decision.ok) {
+        remainingByAccount.set(row.accountId, 0);
+        continue;
+      }
+      remaining = decision.remainingMinute;
+    }
+    if (remaining <= 0) continue;
+    remainingByAccount.set(row.accountId, remaining - 1);
+
+    const [bumped] = await db
+      .update(schema.messageQueue)
+      .set({ status: "sending", updatedAt: new Date() })
+      .where(
+        and(
+          eq(schema.messageQueue.id, row.id),
+          eq(schema.messageQueue.status, "queued"),
+        ),
+      )
+      .returning();
+    if (bumped) claimed.push(bumped);
+  }
+
+  return claimed;
 }
 
 async function dispatchOne(row: Row) {

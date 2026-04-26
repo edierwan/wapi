@@ -21,6 +21,7 @@ import {
   reviewCampaign,
 } from "@/server/campaign-safety";
 import { dispatchCampaign } from "@/server/campaign-dispatcher";
+import { suggestVariant } from "@/server/campaign-ai";
 
 const writeRoles = new Set(["owner", "admin"]);
 
@@ -204,6 +205,65 @@ export async function deleteVariantAction(formData: FormData) {
     variantId: parsed.data.variantId,
   });
   revalidatePath(`/t/${parsed.data.tenantSlug}/campaigns/${parsed.data.campaignId}`);
+}
+
+/* ── AI variant suggestion (Dify HITL) ───────────────────────── */
+
+const suggestSchema = z.object({
+  tenantSlug: z.string(),
+  campaignId: z.string().uuid(),
+  prompt: z.string().max(1000).optional().default(""),
+});
+
+export async function suggestVariantAction(formData: FormData) {
+  const parsed = suggestSchema.safeParse(
+    Object.fromEntries(formData.entries()),
+  );
+  if (!parsed.success) {
+    throw new Error(parsed.error.issues[0]?.message ?? "Invalid input");
+  }
+  const ctx = await authForWrite(parsed.data.tenantSlug);
+
+  const result = await suggestVariant({
+    tenantId: ctx.tenant.id,
+    campaignId: parsed.data.campaignId,
+    prompt: parsed.data.prompt || undefined,
+  });
+
+  if (!result.ok) {
+    // Surface friendly error via thrown Error; the form does not show
+    // it inline yet (we don't have a useActionState wrapper here), so
+    // the user sees the platform error toast. Acceptable for HITL
+    // first-cut; a richer surface comes with the next UI pass.
+    throw new Error(
+      result.reason === "not_configured"
+        ? "No AI provider configured for this tenant. Set one up in tenant AI settings first."
+        : result.reason === "no_base_url"
+          ? "Tenant AI provider has no base URL configured."
+          : result.reason === "provider_error"
+            ? `AI provider error: ${result.error ?? "unknown"}`
+            : "AI variant suggestion is unavailable.",
+    );
+  }
+
+  // Persist as a draft variant marked is_ai_generated=true. The human
+  // reviews / edits / deletes via the existing variant editor before
+  // scheduling. This is the HITL boundary.
+  const trimmed = result.suggestion.slice(0, 2000);
+  await upsertVariant({
+    tenantId: ctx.tenant.id,
+    campaignId: parsed.data.campaignId,
+    variantId: null,
+    label: `AI ${new Date().toISOString().slice(11, 19)}`,
+    bodyText: trimmed,
+    languageCode: null,
+    weight: 1,
+    isAiGenerated: true,
+  });
+
+  revalidatePath(
+    `/t/${parsed.data.tenantSlug}/campaigns/${parsed.data.campaignId}`,
+  );
 }
 
 /* ── safety review ──────────────────────────────────────────── */
