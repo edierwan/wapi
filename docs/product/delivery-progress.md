@@ -1,6 +1,6 @@
 # WAPI Delivery Progress
 
-Last updated: 2026-04-26 (product master tranche shipped, DB-migrated, deployed, and smoke-tested)
+Last updated: 2026-04-26 (shared S3 object storage verified end-to-end on getouch.co; WAPI storage doc realigned to SeaweedFS)
 
 ## Primary delivery ledger
 
@@ -12,6 +12,10 @@ Last updated: 2026-04-26 (product master tranche shipped, DB-migrated, deployed,
 
 ## Current status
 
+- **Shared S3 object storage (SeaweedFS) verified end-to-end on 2026-04-26**: Put / Get (SHA-256 byte-for-byte) / List / Delete / RemoveBucket all pass against `http://seaweed-s3:8333` via the `admin` identity. External anonymous probe correctly returns 403. Authoritative deployment doc lives at `getouch.co/docs/s3-object-storage-2026-04-26.md`. WAPI's `docs/architecture/storage.md` now references it and is corrected (the backend is SeaweedFS, not MinIO; original doc was outdated).
+- **Shared S3 storage write path was broken before today's audit**: `seaweed-volume` was running with `-max=10` and all 10 slots were allocated, so any new bucket / collection write returned `InternalError`. Raised to `-max=200` (≈6 TB headroom) on the live host and mirrored into the workspace `compose.yaml`. Existing buckets (`myfiles`, `news-media`, `test-bucket`) untouched. This is shared infra so it benefits news.getouch.co and any future consumer too, not just WAPI.
+- **WAPI is NOT yet wired to production S3**: a least-privilege `wapi-app` identity scoped to `Read|Write|List|Tagging:wapi-assets` must be provisioned by the operator following §5.1 of the shared doc before WAPI can be pointed at the live endpoint. WAPI must never be issued the SeaweedFS `admin` key.
+- WAPI `storage_objects` table (Drizzle, migration `0001_friendly_doomsday.sql`) is unchanged and remains the right shape for tenant-prefixed object metadata; no schema change required for the storage realignment.
 - Public WAPI availability restored for both environments after another Coolify container-name rotation broke the edge proxy targets.
 - `wapi-dev.getouch.co` health is back to `200`.
 - `wapi.getouch.co` health is back to `200`.
@@ -30,6 +34,10 @@ Last updated: 2026-04-26 (product master tranche shipped, DB-migrated, deployed,
 - `/admin/users` is now the first real test-ops admin module: global directory, tenant-membership visibility, system-role visibility, and guarded delete-user cleanup for repeated test cycles.
 - **Phase 5 tenant UI tranche 2 is shipped**: `/t/{slug}/products` is now a guided product-master editor with tenant-scoped category quick-create, active currency/unit validation, primary image URL handling, AI selling/FAQ notes, view/edit actions, readiness hints, and future-ready schema support for bundles and marketplace mappings.
 - `drizzle/0004_breezy_scarecrow.sql` is applied to both `wapi.dev` and `wapi`; `ref_units` is seeded in both databases.
+- **Tenant Dify knowledge foundation is now shipped locally**: `tenant_ai_settings` now carries additive shared-app/per-tenant-dataset mapping fields, WAPI has a server-only tenant Dify settings service, tenant-only knowledge documents are assembled from business profile/products/services/Business Brain, `/t/{slug}/ai/draft` now shows tenant dataset status and a guarded sync-preparation action, and AI draft inputs now include the resolved tenant dataset id when configured.
+- `drizzle/0005_kind_maggott.sql` was generated for the new `tenant_ai_settings` Dify mapping fields.
+- Validation for this tranche passed locally: `pnpm test:unit`, `pnpm typecheck`, `pnpm build`.
+- Remote Dify dataset document upload is still intentionally pending: this tranche prepares tenant-only knowledge packages and tracks configuration/sync status, but does not fake successful remote knowledge writes.
 - Request 05 was re-audited against the local gateway source. `getouch.co/services/wa/server.mjs` still runs one module-scoped socket and one shared auth directory, so true multi-tenant WhatsApp runtime remains blocked at the gateway layer.
 
 ## Dify multi-tenant architecture decision
@@ -39,7 +47,8 @@ Last updated: 2026-04-26 (product master tranche shipped, DB-migrated, deployed,
 - tenants do not access Dify directly.
 - MVP direction is a shared Dify app or workflow plus one Dify dataset per WAPI tenant.
 - app-per-tenant and workspace-per-tenant are reserved for enterprise or later upgrade paths.
-- implementation is not yet complete end to end; this update records architecture direction only.
+- runtime foundation is now partially implemented in code: additive `tenant_ai_settings` mapping, tenant dataset resolution, tenant-only knowledge document assembly, guarded tenant AI status UI, and dataset-aware AI draft inputs are shipped.
+- remote Dify dataset provisioning/document upload is not yet complete end to end and remains a follow-up tranche.
 - the next AI or knowledge implementation tranche must read [docs/architecture/ai-dify.md](../../docs/architecture/ai-dify.md) first.
 
 ## Admin page status

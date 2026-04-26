@@ -1,21 +1,50 @@
-# Object storage (MinIO / S3-compatible)
+# Object storage (shared SeaweedFS / S3-compatible)
 
 WAPI stores media (product images, campaign attachments, chat media,
-exports) in a self-hosted S3-compatible bucket.
+exports) in the **shared getouch.co S3-compatible storage**.
 
-## Target
+## Shared infra (authoritative)
 
-- Endpoint: `https://s3.getouch.co` (MinIO, already provisioned).
-- One bucket per environment: `wapi-prod`, `wapi-dev`.
-- All objects stored with key prefix `t/{tenantId}/...` so even if
-  signing broke, enumeration stays tenant-scoped.
+The full deployment, identity model, bucket strategy, and verification status
+for the shared object store live in:
 
-## Why self-hosted MinIO
+- [getouch.co/docs/s3-object-storage-2026-04-26.md](../../../getouch.co/docs/s3-object-storage-2026-04-26.md)
+
+That is the single source of truth. WAPI must not duplicate the deployment
+details here. This file only documents WAPI-specific use of that shared
+service.
+
+## Target (WAPI use)
+
+- API endpoint: `https://s3api.getouch.co` (external) or
+  `http://seaweed-s3:8333` (in-cluster on `getouch-edge`).
+- Backend: SeaweedFS (S3-compatible). NOT MinIO. The earlier doc text was
+  outdated; SDK behaviour is identical because both speak S3 v4.
+- Buckets:
+  - `wapi-assets`  — private tenant uploads (default).
+  - `wapi-public`  — optional public-mirror per tenant flag (Phase 8+).
+- Object keys MUST start with `tenants/{tenantId}/...` so even if signing or
+  permission logic regressed, enumeration stays tenant-scoped.
+- Default region string: `us-east-1` (SeaweedFS ignores it; AWS SDK requires
+  some region to sign requests).
+- `S3_FORCE_PATH_STYLE=true` is required.
+
+## Why shared self-hosted
 
 - No per-GB egress surprises.
 - Data residency (Asia) controllable.
 - S3 API compatibility — we can swap to Cloudflare R2 / AWS S3 later
   with zero app code changes.
+- One disk pool serves news.getouch.co, openclaw, portal, and WAPI — fewer
+  moving parts to operate.
+
+## Identity
+
+WAPI gets a dedicated least-privilege identity (`wapi-app`) scoped to
+`Read|Write|List|Tagging:wapi-assets` (and `:wapi-public` once Phase 8 lands).
+WAPI never holds the SeaweedFS `admin` key. Provisioning procedure: see
+§5.1 of the shared doc above. Until that identity is provisioned by the
+operator, WAPI must not be pointed at production S3.
 
 ## Schema: `storage_objects`
 
@@ -79,16 +108,24 @@ content-type sniffing + magic-byte validation + EXIF stripping on images.
 ## Env
 
 ```
-S3_ENDPOINT=https://s3.getouch.co
-S3_REGION=us-east-1        # MinIO default
+S3_ENDPOINT=https://s3api.getouch.co        # cross-host
+# or, when WAPI runs in the same getouch-edge Docker network:
+# S3_ENDPOINT=http://seaweed-s3:8333
+S3_REGION=us-east-1
 S3_FORCE_PATH_STYLE=true
-S3_BUCKET_PROD=wapi-prod
-S3_BUCKET_DEV=wapi-dev
-S3_ACCESS_KEY=...
-S3_SECRET_KEY=...
+S3_BUCKET=wapi-assets                       # primary, private
+S3_PUBLIC_BUCKET=wapi-public                # optional, Phase 8+
+S3_ACCESS_KEY_ID=...                        # provisioned per environment by operator
+S3_SECRET_ACCESS_KEY=...                    # never committed; secret-store only
 ```
 
 App code uses AWS SDK v3 (`@aws-sdk/client-s3` + `@aws-sdk/s3-request-presigner`).
+
+Dev / staging / prod separate by **WAPI environment**, not by S3 bucket: a
+single `wapi-assets` bucket holds all environments because tenant id is a UUID
+and cannot collide across envs in practice. If isolation between dev/prod
+becomes a hard requirement later, switch to `wapi-assets-prod` /
+`wapi-assets-dev` and update `S3_BUCKET` per env.
 
 ## Quota
 
