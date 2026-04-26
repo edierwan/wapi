@@ -157,6 +157,7 @@ Still pending to complete the functional Phase 6 tranche:
 Important guardrail for this phase:
 
 - shared Dify is acceptable for MVP only if WAPI remains the tenancy boundary
+- Dify multi-tenant MVP uses a shared app plus per-tenant dataset; WAPI remains the tenant boundary
 - tenant resolution must come from WAPI ownership (`tenant_id`, account, session, contact), not from Dify
 - tenant-dedicated Dify stays a later upgrade path
 
