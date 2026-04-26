@@ -32,6 +32,16 @@ Last updated: 2026-04-26 (product master tranche shipped, DB-migrated, deployed,
 - `drizzle/0004_breezy_scarecrow.sql` is applied to both `wapi.dev` and `wapi`; `ref_units` is seeded in both databases.
 - Request 05 was re-audited against the local gateway source. `getouch.co/services/wa/server.mjs` still runs one module-scoped socket and one shared auth directory, so true multi-tenant WhatsApp runtime remains blocked at the gateway layer.
 
+## Dify multi-tenant architecture decision
+
+- WAPI remains the tenancy boundary.
+- Dify is the backend AI engine only.
+- tenants do not access Dify directly.
+- MVP direction is a shared Dify app or workflow plus one Dify dataset per WAPI tenant.
+- app-per-tenant and workspace-per-tenant are reserved for enterprise or later upgrade paths.
+- implementation is not yet complete end to end; this update records architecture direction only.
+- the next AI or knowledge implementation tranche must read [docs/architecture/ai-dify.md](../../docs/architecture/ai-dify.md) first.
+
 ## Admin page status
 
 - The admin area is no longer mostly placeholder.

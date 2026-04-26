@@ -26,6 +26,13 @@ Read these files first before planning or changing code:
 - [docs/request/11-test-admin-console.md](../../docs/request/11-test-admin-console.md)
 - [docs/architecture/admin-console.md](../../docs/architecture/admin-console.md)
 
+Before any AI, Dify, or knowledge work:
+
+- read [docs/architecture/ai-dify.md](../../docs/architecture/ai-dify.md) first
+- do not expose Dify directly to tenants
+- do not create app-per-tenant by default
+- use shared Dify app plus per-tenant dataset unless the request explicitly selects enterprise or dedicated mode
+
 ## Source-of-truth rule
 
 Treat [docs/product/delivery-progress.md](../../docs/product/delivery-progress.md) as the only live progress ledger.
@@ -42,7 +49,8 @@ Treat [docs/product/delivery-progress.md](../../docs/product/delivery-progress.m
 2. Treat only the remaining staged admin modules as expected placeholders, and preserve the already-shipped real modules: `/admin/system-health`, `/admin/users`, `/admin/tenants`, `/admin/wa-sessions`, `/admin/jobs`, `/admin/ai`, and `/admin/settings`.
 3. Keep Request 05 explicit as the external blocker for live WhatsApp behavior.
 4. Preserve multi-tenant Dify isolation: WAPI resolves tenant ownership first, then passes tenant-scoped context to Dify.
-5. Keep future inbox, campaign, and follow-up abstractions compatible with omnichannel rollout and Smart Customer Memory.
+5. Default Dify MVP architecture to shared app plus per-tenant dataset, not app-per-tenant or workspace-per-tenant.
+6. Keep future inbox, campaign, and follow-up abstractions compatible with omnichannel rollout and Smart Customer Memory.
 
 ## Default next-round priority
 
