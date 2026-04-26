@@ -1,6 +1,6 @@
 # WAPI Delivery Progress
 
-Last updated: 2026-04-26 (admin tranche shipped, deployed, and smoke-tested)
+Last updated: 2026-04-26 (product master tranche shipped, DB-migrated, deployed, and smoke-tested)
 
 ## Primary delivery ledger
 
@@ -25,7 +25,11 @@ Last updated: 2026-04-26 (admin tranche shipped, deployed, and smoke-tested)
 - Omnichannel expansion has been reviewed as a later roadmap track; current shipped transport integration remains WhatsApp-first and should not be mistaken for the final channel model.
 - Local Phase 8b worker runtime defect fixed: standalone worker scripts no longer die on `Cannot find module 'server-only'` before the supervisor can run.
 - Authenticated navigation now exposes a visible sign-out control on marketing, dashboard, and tenant headers, including normal laptop-width layouts.
+- Registration now preserves already-entered non-password fields when server-side password validation fails; only password fields need to be re-entered.
+- `/admin/users` copy is now production-style (`Delete user`, `Clear registration artifacts`) instead of test-only wording.
 - `/admin/users` is now the first real test-ops admin module: global directory, tenant-membership visibility, system-role visibility, and guarded delete-user cleanup for repeated test cycles.
+- **Phase 5 tenant UI tranche 2 is shipped**: `/t/{slug}/products` is now a guided product-master editor with tenant-scoped category quick-create, active currency/unit validation, primary image URL handling, AI selling/FAQ notes, view/edit actions, readiness hints, and future-ready schema support for bundles and marketplace mappings.
+- `drizzle/0004_breezy_scarecrow.sql` is applied to both `wapi.dev` and `wapi`; `ref_units` is seeded in both databases.
 - Request 05 was re-audited against the local gateway source. `getouch.co/services/wa/server.mjs` still runs one module-scoped socket and one shared auth directory, so true multi-tenant WhatsApp runtime remains blocked at the gateway layer.
 
 ## Admin page status
@@ -147,6 +151,12 @@ Publication and deployment result:
 - Coolify prod deployment finished for commit `f91a9fce13431652abf56017dd8a9d0f99f1ad0d`
 - live prod image tag now resolves to `nql6rdsjrcmlvcee1o2dz8wd:f91a9fce13431652abf56017dd8a9d0f99f1ad0d`
 - both dev and prod hit temporary `502` after Coolify container-name rotation and were restored by rerunning the host-side Caddy upstream sync helper
+- product master tranche publication (2026-04-26):
+  - `develop` pushed to `origin/develop` at `64579f5`
+  - Coolify dev deployment finished for commit `64579f572423273e859a5e754b0f10aa98f9045b`
+  - `main` merged and pushed to `origin/main` at merge commit `68ba144`
+  - Coolify prod deployment finished for commit `68ba14453255f85368d5baae60e3fc03b379cc72`
+  - both dev and prod briefly returned `502` again after container rotation; the same Caddy upstream sync helper restored public traffic
 
 Remaining manual checks:
 
@@ -191,8 +201,10 @@ Remaining manual checks:
 Both `wapi.dev` and `wapi` currently report:
 
 - reference-data counts: `14|15|10|15|18|7|10`
+- reference-data counts: `14|15|11|10|15|18|7|10`
   - `ref_countries = 14`
   - `ref_currencies = 15`
+  - `ref_units = 11`
   - `ref_languages = 10`
   - `ref_timezones = 15`
   - `ref_industries = 18`
@@ -209,7 +221,7 @@ Both `wapi.dev` and `wapi` currently report:
   - `followup_sequences`
   - `followup_steps`
 - `permissions.code='system.admin.access'`: `1`
-- total public tables: `52`
+- total public tables: `55`
 
 ### Code-audit checks
 
@@ -222,6 +234,9 @@ Both `wapi.dev` and `wapi` currently report:
   - `src/app/admin/users/page.tsx`
   - `src/app/admin/users/actions.ts`
   - `src/app/admin/_nav.ts`
+- Registration failure state retention is now shipped:
+  - `src/app/register/actions.ts`
+  - `src/app/register/register-form.tsx`
 - Phase 5 functional tenant UI shipped (tranche 1) with explicit tenant scoping on every query:
   - `src/server/contacts.ts`
   - `src/server/business-memory.ts`
@@ -258,6 +273,7 @@ Interpretation:
 - Live WhatsApp gateway behavior (real QR + real send + real status webhooks) still depends on Request 05.
 - Phase 7 functional tranche and its planned remaining slice are now shipped.
 - The next real product tranche should not rebuild shipped Phase 6 or shipped Phase 7 foundations; it should validate them, close out release-hardening work, and then move into Phase 8 groundwork while keeping omnichannel / Smart Customer Memory compatibility intact.
+- Product master tranche 2 is now the shipped baseline for `/t/{slug}/products`; future product work should extend this guided editor and the `product_channel_mappings` / `product_bundles` schema rather than reintroducing the old minimal create form.
 
 ## Test-script result summary
 
