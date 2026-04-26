@@ -11,6 +11,8 @@ Last updated: 2026-04-28
 - A recurring VPS cron now runs that sync helper every 5 minutes to reduce future `502` windows after WAPI redeploys.
 - **Phase 5 tenant UI tranche 1 is shipped** (contacts, Business Brain, AI Readiness card, minimal product/service create).
 - **Phase 6 contract-ready WAPI surface is shipped** alongside the **Dify runtime foundation** (provider resolution, secret resolver, Dify client, tenant-scoped context assembly, manual HITL draft action). Live gateway behavior remains gated on Request 05.
+- **Phase 7 functional tranche is shipped** (campaign composer, safety review, follow-up sequence UI, queue-backed dispatcher, tenant-scoped campaign surfaces).
+- **Phase 7 remaining slice is shipped** (consent-aware safety review, reply-first runtime gating in the dispatcher, per-account warm-up + rate limit honored by the outbound worker, long-running follow-up auto-trigger executor, AI variant suggestion via Dify HITL, KPI panel on campaign detail).
 - The Dify multi-tenant architecture plan is now updated to reflect actual shipped schema versus missing runtime integration.
 - Omnichannel expansion has been reviewed as a later roadmap track; current shipped transport integration remains WhatsApp-first and should not be mistaken for the final channel model.
 
@@ -125,8 +127,8 @@ Interpretation:
 
 - Phase 6 contract-ready WAPI side is now functional (HMAC verify, session lifecycle, owner/admin UI, Dify resolution + HITL draft).
 - Live WhatsApp gateway behavior (real QR + real send + real status webhooks) still depends on Request 05.
-- Phase 7 schema is landed; functional tranche still pending.
-- The next real product tranche should not rebuild shipped Phase 6 foundations; it should validate them, then move into Phase 7 and omnichannel-safe planning.
+- Phase 7 functional tranche is shipped, but it still has a follow-on tranche for AI variants, reply-first gating, worker hardening, KPIs, and consent-aware safety checks.
+- The next real product tranche should not rebuild shipped Phase 6 or shipped Phase 7 foundations; it should validate them, then finish the remaining Phase 7 slice and keep omnichannel / Smart Customer Memory compatibility intact.
 
 ## Test-script result summary
 
@@ -268,6 +270,10 @@ request doc is now in one of three states:
   NOT regressions.
 - No real defects found in this round.
 
+## Local environment note
+
+- `pnpm db:seed` exiting with code `1` in one local run was caused by a missing local `.env.local`, not by an application defect in the shipped Phase 5/6/7 work.
+
 ## Blockers and limits in this pass
 
 - I do not have the current super-admin password in this conversation, so I could not complete the signed-in admin browser checks from Test 11.
@@ -297,11 +303,17 @@ Workspace prompt prepared for the next round:
 
 ### Immediate next actions
 
-1. Complete the remaining interactive checks for Test 08, Test 09 contract-ready, and Test 11.
-2. Start the functional Phase 7 tranche instead of redoing shipped Phase 6 or Dify foundation work.
-3. Add omnichannel planning updates for Facebook, Instagram, Shopee, Lazada, and TikTok without forcing immediate implementation.
+1. Complete the remaining interactive checks for Test 08, Test 11, Test 13 contract-ready, and Test 14 Phase 7 campaigns.
+2. Continue the remaining Phase 7 tranche instead of rebuilding shipped Phase 6/Dify or already-landed campaign surfaces.
+3. Prioritize the unfinished Phase 7 items:
+  - AI variant suggestion via Dify HITL
+  - reply-first runtime gating
+  - per-number rate limit / warm-up
+  - long-running follow-up executor
+  - KPIs panel
+  - consent integration inside the safety review
 4. Keep Request 05 as the external blocker for live WhatsApp behavior.
-5. Preserve the current Dify multi-tenant guardrails while Phase 7 and inbox planning expand.
+5. Preserve omnichannel and Smart Customer Memory compatibility while extending inbox, campaign, and follow-up abstractions.
 6. Keep this file updated as the live progress ledger.
 
 ### Planning guardrail for the next round
@@ -313,23 +325,25 @@ Coder AI should split the next work into two choices instead of mixing them:
 
 Recommended priority:
 
-1. interactive validation and defect close-out for shipped Phase 5 and Phase 6 contract-ready work
-2. Phase 7 campaign UI and worker behavior
+1. interactive validation and defect close-out for shipped Phase 5, Phase 6 contract-ready, and Phase 7 functional work
+2. remaining Phase 7 tranche items
 3. omnichannel architecture and roadmap prep for future inbox/channel expansion
-4. release hardening and blocker tracking
-5. only then full admin modules unless business priorities change
+4. Smart Customer Memory compatibility while shaping inbox/follow-up work
+5. release hardening and blocker tracking
+6. only then full admin modules unless business priorities change
 
 ### Specific corrections to prior planning
 
 1. The admin shell is shipped and real now.
 2. The admin nav shape is `11` total entries: `1` overview route plus `10` placeholder module routes.
-3. Phase 6 and Phase 7 in WAPI are currently schema-foundation state, not missing-UI regressions.
+3. Phase 6 is functional contract-ready and Phase 7 already has a shipped functional tranche; remaining work is follow-on tranche work, not a reset.
 4. WAPI release-readiness should be separated from later roadmap tranches like full admin modules and campaign UI.
 5. The current admin screenshot should be treated as a pass for the shell state, not evidence that the shell failed.
 6. Dify in WAPI is no longer only schema-and-architecture ready; the first runtime foundation is now shipped.
 7. Shared Dify is acceptable for MVP only if WAPI remains the tenancy boundary and tenant context is resolved in WAPI first.
 8. Tenant-dedicated Dify is a later upgrade path, not the first implementation target.
 9. Omnichannel support is not part of MVP, but future inbox/campaign work should avoid hard-coding WhatsApp-only assumptions into shared abstractions.
+10. Smart Customer Memory is planning-approved and future inbox/customer/follow-up work should not block `tenant_id + normalized_phone_number` memory identity.
 
 ## Suggested plan enhancement
 

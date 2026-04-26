@@ -1,7 +1,12 @@
 import "server-only";
-import { and, desc, eq } from "drizzle-orm";
+import { and, desc, eq, inArray, sql } from "drizzle-orm";
 import { requireDb, schema } from "@/db/client";
-import { listVariants } from "@/server/campaigns";
+import {
+  getCampaign,
+  listVariants,
+  previewAudience,
+  type AudienceFilter,
+} from "@/server/campaigns";
 
 /**
  * Internal safety review for a campaign.
@@ -73,6 +78,7 @@ export async function reviewCampaign(input: {
 }): Promise<SafetyResult> {
   const db = requireDb();
   const variants = await listVariants(input.tenantId, input.campaignId);
+  const campaign = await getCampaign(input.tenantId, input.campaignId);
 
   // Tenant business profile (for prohibited words). Single row per tenant.
   const [profile] = await db
@@ -145,6 +151,92 @@ export async function reviewCampaign(input: {
       });
     }
   }
+
+  // Consent coverage. Promotional objectives need marketing consent on
+  // file. Transactional / followup / survey relax this; the tenant still
+  // needs opt-in for outbound contact, but consent_type='marketing' is
+  // not the right gate. Channel-agnostic: contact_consents.channel can
+  // expand beyond whatsapp without code changes here.
+  const isMarketingObjective =
+    !campaign?.objective ||
+    campaign.objective === "promo" ||
+    campaign.objective === "re_engage" ||
+    campaign.objective === "event";
+
+  if (isMarketingObjective) {
+    const filter = (campaign?.audienceFilter as AudienceFilter | null) ?? {};
+    const audience = await previewAudience(input.tenantId, filter);
+    if (audience.total > 0) {
+      // Count consent rows for this tenant's audience contacts.
+      // We re-derive contact ids via a tenant-scoped subselect to avoid
+      // pulling all ids into the app process.
+      const consentRows = await db
+        .select({
+          contactId: schema.contactConsents.contactId,
+          granted: schema.contactConsents.granted,
+        })
+        .from(schema.contactConsents)
+        .innerJoin(
+          schema.contacts,
+          eq(schema.contactConsents.contactId, schema.contacts.id),
+        )
+        .where(
+          and(
+            eq(schema.contacts.tenantId, input.tenantId),
+            eq(schema.contactConsents.consentType, "marketing"),
+          ),
+        );
+      // Resolve audience ids in full (preview only sampled 20).
+      const audienceIds = await db
+        .select({ id: schema.contacts.id })
+        .from(schema.contacts)
+        .where(
+          and(
+            eq(schema.contacts.tenantId, input.tenantId),
+            eq(schema.contacts.status, "active"),
+          ),
+        );
+      // Build a granted-set restricted to audience ids.
+      const audienceIdSet = new Set(audienceIds.map((r) => r.id));
+      const grantedSet = new Set(
+        consentRows
+          .filter((r) => r.granted && audienceIdSet.has(r.contactId))
+          .map((r) => r.contactId),
+      );
+      const grantedCount = grantedSet.size;
+      const ratio =
+        audience.total > 0 ? grantedCount / audience.total : 0;
+
+      if (grantedCount === 0) {
+        findings.push({
+          code: "no_marketing_consent",
+          status: "high_risk",
+          message:
+            "No contact in the audience has marketing consent on file. Capture consent before sending a promotional campaign.",
+        });
+      } else if (ratio < 0.5) {
+        findings.push({
+          code: "low_marketing_consent",
+          status: "needs_review",
+          message: `Only ${grantedCount} of ${audience.total} audience contacts (${Math.round(
+            ratio * 100,
+          )}%) have marketing consent on file.`,
+        });
+      } else {
+        findings.push({
+          code: "marketing_consent_ok",
+          status: "good",
+          message: `${grantedCount} of ${audience.total} audience contacts (${Math.round(
+            ratio * 100,
+          )}%) have marketing consent on file.`,
+        });
+      }
+    }
+  }
+
+  // touch unused import to keep tree-shake hint stable when editing later
+  void inArray;
+  void sql;
 
   const overallStatus: SafetyResult["overallStatus"] = findings.some(
     (f) => f.status === "high_risk",

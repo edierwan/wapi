@@ -16,6 +16,7 @@ Start with [modules.md](./modules.md) for the high-level map.
 ## Integrations
 - [whatsapp-gateway.md](./whatsapp-gateway.md) — multi-tenant Baileys gateway contract.
 - [ai-dify.md](./ai-dify.md) — shared Dify default with per-tenant override.
+- [customer-memory-core.md](./customer-memory-core.md) — future tenant/customer/conversation memory layer owned by WAPI.
 - [mcp-tools.md](./mcp-tools.md) — internal AI tool layer (Phase 10).
 - [realtime.md](./realtime.md) — Postgres LISTEN/NOTIFY + SSE for inbox.
 - [campaign-safety-assistant.md](./campaign-safety-assistant.md) — internal risk engine + auto-fix + user-friendly summary (Phase 7).

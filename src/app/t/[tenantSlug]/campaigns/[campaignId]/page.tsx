@@ -29,6 +29,7 @@ import {
   deleteVariantAction,
   runSafetyReviewAction,
   scheduleCampaignAction,
+  suggestVariantAction,
   updateCampaignAction,
   upsertVariantAction,
 } from "../actions";
@@ -338,6 +339,31 @@ export default async function CampaignDetail({
                 </Button>
               </form>
             ) : null}
+
+            {canWrite && !isFinal ? (
+              <form
+                action={suggestVariantAction}
+                className="mt-3 grid gap-2 rounded-md border border-dashed border-[var(--border)] p-3 text-sm"
+              >
+                <div className="text-xs text-[var(--muted-foreground)]">
+                  AI variant suggestion (Dify, HITL). Saves a draft variant
+                  flagged <code>is_ai_generated</code>; review or delete
+                  before scheduling.
+                </div>
+                <input type="hidden" name="tenantSlug" value={ctx.tenant.slug} />
+                <input type="hidden" name="campaignId" value={campaign.id} />
+                <textarea
+                  name="prompt"
+                  rows={2}
+                  maxLength={1000}
+                  placeholder="Optional steering, e.g. 'Friendly, focus on free shipping, in Bahasa Malaysia.'"
+                  className="w-full rounded-md border border-[var(--border)] bg-[var(--background)] px-3 py-2"
+                />
+                <Button type="submit" size="sm" variant="outline">
+                  Suggest variant via AI
+                </Button>
+              </form>
+            ) : null}
           </CardContent>
         </Card>
       </div>
@@ -389,6 +415,65 @@ export default async function CampaignDetail({
                 </Button>
               </form>
             ) : null}
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base">Performance</CardTitle>
+            <CardDescription>
+              Live counts from <code className="font-mono text-xs">campaign_recipients</code>.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-3 text-sm">
+            {stats.total === 0 ? (
+              <p className="text-[var(--muted-foreground)]">
+                No recipients materialized yet.
+              </p>
+            ) : (
+              (() => {
+                const map = new Map<string, number>();
+                for (const r of stats.byStatus) map.set(r.status, Number(r.count));
+                const get = (k: string) => map.get(k) ?? 0;
+                const total = stats.total;
+                const sentish = get("sent") + get("delivered") + get("read") + get("replied");
+                const pct = (n: number) =>
+                  total === 0 ? "0%" : `${Math.round((n / total) * 1000) / 10}%`;
+                const cells: { label: string; value: number; rate: string }[] = [
+                  { label: "Pending", value: get("pending"), rate: pct(get("pending")) },
+                  { label: "Sent", value: get("sent"), rate: pct(get("sent")) },
+                  { label: "Delivered", value: get("delivered"), rate: pct(get("delivered")) },
+                  { label: "Read", value: get("read"), rate: pct(get("read")) },
+                  { label: "Replied", value: get("replied"), rate: pct(get("replied")) },
+                  { label: "Failed", value: get("failed"), rate: pct(get("failed")) },
+                  { label: "Excluded", value: get("excluded"), rate: pct(get("excluded")) },
+                ];
+                const reachRate = pct(sentish);
+                return (
+                  <>
+                    <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+                      {cells.map((c) => (
+                        <div
+                          key={c.label}
+                          className="rounded-md border border-[var(--border)] p-2"
+                        >
+                          <div className="text-xs text-[var(--muted-foreground)]">
+                            {c.label}
+                          </div>
+                          <div className="text-lg font-semibold">{c.value}</div>
+                          <div className="text-xs text-[var(--muted-foreground)]">
+                            {c.rate}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                    <p className="text-xs text-[var(--muted-foreground)]">
+                      Total: {total} · Reach (sent+delivered+read+replied): {reachRate}
+                    </p>
+                  </>
+                );
+              })()
+            )}
           </CardContent>
         </Card>
 

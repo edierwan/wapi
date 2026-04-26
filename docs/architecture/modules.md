@@ -48,6 +48,7 @@ deeper schema.
 | M. Storage (objects) | MinIO/S3 media storage | 4 | [storage.md](./storage.md) |
 | N. Audit / Compliance | Audit logs, consent, data export | 8 | [security.md](./security.md#audit--compliance) |
 | O. Reporting / KPI | Tenant + admin KPI views | 8 | — (Phase 8) |
+| P. Customer Memory Core | Tenant knowledge + customer memory + conversation memory + follow-up context | 8+, deepen later | [customer-memory-core.md](./customer-memory-core.md) |
 
 ## Transactional pattern
 

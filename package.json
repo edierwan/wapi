@@ -14,7 +14,9 @@
     "db:studio": "drizzle-kit studio",
     "db:seed": "tsx scripts/seed.ts",
     "db:seed:reference": "tsx scripts/seed-reference.ts",
-    "db:bootstrap:admin": "tsx scripts/bootstrap-admin.ts"
+    "db:bootstrap:admin": "tsx scripts/bootstrap-admin.ts",
+    "worker:outbound": "tsx scripts/worker-outbound.ts",
+    "worker:followups": "tsx scripts/follow-up-executor.ts"
   },
   "dependencies": {
     "@radix-ui/react-accordion": "^1.2.2",
