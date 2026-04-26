@@ -1,5 +1,5 @@
 ---
-description: "Use when: continuing WAPI delivery from the current shipped state, replanning the next tranche, or implementing the next phase without drifting into unfinished admin modules too early."
+description: "Use when: continuing WAPI delivery from the current shipped state with a single live progress ledger and without drifting into lower-priority admin or future-channel work too early."
 ---
 
 # WAPI Next-Phase Delivery Brief
@@ -14,191 +14,44 @@ Scope boundary:
 
 Read these files first before planning or changing code:
 
-- [docs/product/roadmap.md](../../docs/product/roadmap.md)
 - [docs/product/delivery-progress.md](../../docs/product/delivery-progress.md)
+- [docs/product/roadmap.md](../../docs/product/roadmap.md)
 - [docs/architecture/ai-dify.md](../../docs/architecture/ai-dify.md)
+- [docs/architecture/customer-memory-core.md](../../docs/architecture/customer-memory-core.md)
+- [docs/request/13-test-phase6-contract-ready.md](../../docs/request/13-test-phase6-contract-ready.md)
+- [docs/request/14-test-phase7-campaigns.md](../../docs/request/14-test-phase7-campaigns.md)
 - [docs/request/08-test-phase5.md](../../docs/request/08-test-phase5.md)
-- [docs/request/09-test-phase6.md](../../docs/request/09-test-phase6.md)
-- [docs/request/10-test-phase7.md](../../docs/request/10-test-phase7.md)
 - [docs/request/11-test-admin-console.md](../../docs/request/11-test-admin-console.md)
 - [docs/architecture/admin-console.md](../../docs/architecture/admin-console.md)
 
-## Current truth you must preserve
+## Source-of-truth rule
 
-1. Phase 1 through Phase 4 are shipped.
-2. Phase 5, 6, and 7 are partially shipped, with real functional slices already landed in each.
-3. The admin shell is shipped.
-4. The admin modules are intentionally still placeholder-only.
-5. The current `/admin` page showing mostly `Coming soon` is expected and should not be treated as a regression.
-6. Public WAPI routing was recently restored after Coolify rotated container names and stale edge proxy targets caused `502` errors.
-7. WAPI availability and release hardening are part of delivery, not optional cleanup.
+Treat [docs/product/delivery-progress.md](../../docs/product/delivery-progress.md) as the only live progress ledger.
 
-## What is already shipped
+- Do not restate or fork its delivery truth into new brief files.
+- Update that file after each meaningful delivery or validation step.
+- Use [docs/product/roadmap.md](../../docs/product/roadmap.md) only for stable phase direction and future sequencing.
+- By default, update only [docs/product/delivery-progress.md](../../docs/product/delivery-progress.md).
+- Only update request test docs or roadmap/architecture files when the current phase work or validation result genuinely changes those documents.
 
-### Admin shell
+## Required guardrails
 
-- `/admin` overview exists.
-- Shared admin layout exists.
-- Sidebar and overview are driven from a shared nav config.
-- There are `11` total nav entries:
-  - `1` overview route
-  - `10` placeholder module routes
-- RBAC gate uses `system.admin.access` server-side.
+1. Preserve the current shipped truth from [docs/product/delivery-progress.md](../../docs/product/delivery-progress.md).
+2. Treat missing full admin modules as expected until the admin-module tranche is explicitly chosen.
+3. Keep Request 05 explicit as the external blocker for live WhatsApp behavior.
+4. Preserve multi-tenant Dify isolation: WAPI resolves tenant ownership first, then passes tenant-scoped context to Dify.
+5. Keep future inbox, campaign, and follow-up abstractions compatible with omnichannel rollout and Smart Customer Memory.
 
-### Phase 5 foundation
+## Default next-round priority
 
-- reference/master data schema is landed
-- onboarding redesign is landed
-- contacts/business-memory/AI-readiness schema is landed
-- build and route surfaces are healthy
-- tenant UI tranche 1 is already shipped:
-   - contacts CRUD + tag assignment
-   - Business Brain CRUD
-   - AI Readiness card + recompute/save
-   - minimal product / service create flow
+Unless the user explicitly reprioritizes, follow the active next actions and priority order recorded in [docs/product/delivery-progress.md](../../docs/product/delivery-progress.md).
 
-### Phase 6 foundation
+Execution order for the round:
 
-- `message_queue` schema is landed
-- `inbound_messages` schema is landed
-- OTP still uses the gateway path
-- Phase 6 contract-ready WAPI surface is already shipped:
-   - gateway client wrapper
-   - HMAC-verified webhook receivers
-   - tenant-scoped session helpers
-   - owner/admin WhatsApp connect/reset/disconnect UI
-   - outbound worker skeleton
-   - first Dify runtime foundation
-
-### Phase 7 foundation
-
-- `campaigns`
-- `campaign_variants`
-- `campaign_safety_reviews`
-- `campaign_recipients`
-- `followup_sequences`
-- `followup_steps`
-- Phase 7 functional tranche is already shipped:
-   - campaign composer
-   - safety review presentation
-   - follow-up sequence UI
-   - tenant-scoped campaign query surfaces
-   - queue-backed dispatcher into `message_queue`
-
-## What is not shipped yet
-
-### Do not misclassify these
-
-- Missing full admin modules is not a bug for the current stage.
-- Missing live gateway behavior is still expected while Request 05 remains externally blocked.
-- Missing some later Phase 7 capabilities does not mean Phase 7 is unshipped; the first functional tranche is already landed.
-
-### Actual pending work
-
-- interactive validation for shipped Phase 5, Phase 6, and Phase 7 work
-- remaining Phase 7 tranche items
-- omnichannel architecture prep for future inbox/channel rollout
-- Smart Customer Memory compatibility while shaping inbox/follow-up abstractions
-- release hardening and operational close-out
-
-## Delivery priority for the next round
-
-Follow this order unless the user explicitly changes priority:
-
-1. Complete the remaining interactive validation for shipped Phase 5, Phase 6 contract-ready, and Phase 7 work where credentials, browser interaction, or live secrets are still needed.
-2. Implement the remaining Phase 7 tranche items.
-3. Update architecture and plan docs so future inbox/campaign work can grow into Facebook, Instagram, Shopee, Lazada, and TikTok without redoing tenant, Dify, or Smart Customer Memory isolation.
-4. Keep release hardening and blocker tracking visible.
-5. Keep full admin modules for a later dedicated tranche.
-6. Do not block the future WAPI Customer Memory Core / Smart Customer Memory enhancement when shaping inbox, campaign, or follow-up abstractions.
-
-## Required next tranche
-
-### Tranche 1 — close out Phase 5 validation only
-
-Goal:
-
-- confirm the already shipped Phase 5 tenant tranche in interactive flows and document any real gaps
-
-Deliverables:
-
-1. Run the remaining interactive checks from the latest Phase 5 test doc.
-2. Fix only defects actually found during that pass.
-3. Update docs and progress ledger with verified versus still-manual status.
-
-Acceptance bar for Tranche 1:
-
-- shipped Phase 5 tranche 1 is either confirmed or any real defect is fixed
-- progress docs clearly separate automated versus interactive validation
-
-### Tranche 2 — remaining Phase 7 slice + omnichannel-safe planning
-
-Do this after Tranche 1 validation unless the user explicitly reprioritizes.
-
-Goal:
-
-- turn the campaign schema into real tenant-facing behavior while preserving an upgrade path to omnichannel inbox and channel adapters
-
-Deliverables:
-
-1. AI variant suggestion via Dify HITL
-2. reply-first runtime gating
-3. per-number rate limit / warm-up mode
-4. long-running follow-up executor / scheduler
-5. campaign KPIs panel
-6. consent integration inside the safety review
-7. omnichannel-safe design updates in docs
-   - identify where inbox/campaign abstractions must stay channel-agnostic
-   - preserve WhatsApp-first runtime as the first adapter, not the final universal model
-   - note rollout intent for Facebook, Instagram, Shopee, Lazada, and TikTok
-   - keep room for future Smart Customer Memory keyed by tenant ownership + normalized phone number
-8. doc and progress updates
-
-Important constraint:
-
-- Do not re-open shipped Phase 6/Dify foundation or already-landed Phase 7 surfaces unless validation finds a real defect.
-- Preserve the existing Dify tenant-isolation rules while Phase 7 grows.
-- Do not let new inbox/campaign concepts assume WhatsApp-only identities or webhook payload shapes.
-- Marketplace channels such as Shopee, Lazada, and TikTok may require commerce-aware modeling beyond plain chat messages.
-
-Acceptance bar for Tranche 2:
-
-- remaining Phase 7 slice materially advances without regressing the already-shipped campaign/follow-up surfaces
-- tenant isolation is explicit in query paths
-- docs and tests are updated to match shipped functionality
-- omnichannel direction is documented without pretending those connectors are already shipped
-
-## Admin-module rule
-
-Do not use the next round to fully implement:
-
-- `/admin/tenants`
-- `/admin/users`
-- `/admin/wa-sessions`
-- `/admin/jobs`
-- `/admin/ai`
-- `/admin/billing`
-- `/admin/audit`
-- `/admin/system-health`
-- `/admin/abuse`
-- `/admin/settings`
-
-unless the user explicitly says to reprioritize into the admin-module tranche.
-
-Right now those routes are supposed to be placeholders.
-
-## Required plan enhancements
-
-As you work, maintain these delivery rules:
-
-1. Separate `schema shipped`, `shell shipped`, and `functional phase complete`.
-2. Keep release hardening visible in the plan.
-3. Keep doc alignment current after every meaningful tranche.
-4. Do not mark WAPI WhatsApp readiness green while Request 05 remains externally blocked.
-5. Preserve multi-tenant Dify isolation: WAPI resolves tenant ownership first; Dify does not.
-6. Treat tenant-dedicated Dify as a later upgrade path, not the first implementation.
-7. Keep future inbox/campaign abstractions compatible with later connectors for Facebook, Instagram, Shopee, Lazada, and TikTok.
-8. Keep future inbox, CRM, and follow-up abstractions compatible with the planned WAPI Customer Memory Core / Smart Customer Memory layer.
+1. deliver the active phase work or defect fixes
+2. run the relevant phase test scripts and validation flows after the delivery work
+3. record the results, blockers, and remaining manual checks back into [docs/product/delivery-progress.md](../../docs/product/delivery-progress.md)
+4. report back what shipped, what passed, what is still blocked, and what the next phase should be
 
 ## Required documentation updates after each tranche
 
@@ -211,6 +64,10 @@ Update when scope changes materially:
 - [docs/product/roadmap.md](../../docs/product/roadmap.md)
 - relevant request test docs under [docs/request](../../docs/request)
 - relevant architecture docs when implementation meaningfully changes behavior or expectations
+
+Avoid creating extra handoff files unless the user explicitly asks for a new durable document.
+
+Do not create a new summary file just to report test outcomes.
 
 ## Validation expectations
 
@@ -242,8 +99,9 @@ When a feature is interactive and cannot be fully verified automatically:
 
 Success means:
 
-1. the next functional tranche is delivered in real WAPI behavior, not only schema
-2. the admin shell remains stable and correctly treated as complete for its current scope
-3. docs reflect actual shipped state
-4. remaining blockers are explicit, especially Request 05
-5. WAPI is closer to end delivery without drifting into lower-priority work
+1. the active work follows the status and next actions recorded in [docs/product/delivery-progress.md](../../docs/product/delivery-progress.md)
+2. the admin shell remains correctly treated as complete for its current scope
+3. docs reflect actual shipped state without duplicated handoff drift
+4. remaining blockers stay explicit, especially Request 05
+5. the relevant phase test scripts are executed after delivery work and their results are written back to [docs/product/delivery-progress.md](../../docs/product/delivery-progress.md)
+6. WAPI moves toward delivery without drifting into lower-priority work

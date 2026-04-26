@@ -94,13 +94,10 @@ file a security defect.
 ## Out of scope for this tranche (do not file as defects)
 
 - Tenant-dedicated Dify infrastructure (Phase 8+).
-- Long-running follow-up executor / runtime scheduler (later tranche).
 - Channel selection beyond WhatsApp (Phase 8 omnichannel).
-- AI-drafted campaign variants from Dify (next tranche; the manual editor
-  is fully functional today).
-- Consent rule integration (`contact_consents`) inside the safety review;
-  the current rule set covers prohibited words, length, opt-out hint, and
-  caps-shouting. Consent integration ships once the consent UI lands.
+- Smart Customer Memory live runtime hooks (architecture only — payloads
+  carry the `tenant_id + normalized_phone_number` identity anchor but no
+  runtime enrichment is wired yet).
 
 ## H. Phase 7 remaining slice (shipped tranche 4)
 
@@ -180,11 +177,3 @@ file a security defect.
    counts and percentages, plus a reach rate (sent + delivered + read +
    replied) summary line.
 4. Counts should match `recipientStats` for the same campaign id.
-
-## Out of scope for this tranche (still)
-
-- Tenant-dedicated Dify infrastructure (Phase 8+).
-- Channel selection beyond WhatsApp (Phase 8 omnichannel).
-- Smart Customer Memory live integration (architecture only — identity
-  anchor `tenant_id + normalized_phone_number` is preserved in payloads
-  but no runtime hook is wired yet).

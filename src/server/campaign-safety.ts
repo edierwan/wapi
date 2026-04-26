@@ -2,9 +2,9 @@ import "server-only";
 import { and, desc, eq, inArray, sql } from "drizzle-orm";
 import { requireDb, schema } from "@/db/client";
 import {
+  fetchAllAudienceIds,
   getCampaign,
   listVariants,
-  previewAudience,
   type AudienceFilter,
 } from "@/server/campaigns";
 
@@ -165,11 +165,12 @@ export async function reviewCampaign(input: {
 
   if (isMarketingObjective) {
     const filter = (campaign?.audienceFilter as AudienceFilter | null) ?? {};
-    const audience = await previewAudience(input.tenantId, filter);
-    if (audience.total > 0) {
-      // Count consent rows for this tenant's audience contacts.
-      // We re-derive contact ids via a tenant-scoped subselect to avoid
-      // pulling all ids into the app process.
+    // Use the same resolver the dispatcher uses so coverage is computed
+    // against the actual audience, not the tenant's full active list.
+    const audienceRows = await fetchAllAudienceIds(input.tenantId, filter);
+    const audienceTotal = audienceRows.length;
+    if (audienceTotal > 0) {
+      const audienceIdSet = new Set(audienceRows.map((r) => r.id));
       const consentRows = await db
         .select({
           contactId: schema.contactConsents.contactId,
@@ -186,26 +187,13 @@ export async function reviewCampaign(input: {
             eq(schema.contactConsents.consentType, "marketing"),
           ),
         );
-      // Resolve audience ids in full (preview only sampled 20).
-      const audienceIds = await db
-        .select({ id: schema.contacts.id })
-        .from(schema.contacts)
-        .where(
-          and(
-            eq(schema.contacts.tenantId, input.tenantId),
-            eq(schema.contacts.status, "active"),
-          ),
-        );
-      // Build a granted-set restricted to audience ids.
-      const audienceIdSet = new Set(audienceIds.map((r) => r.id));
       const grantedSet = new Set(
         consentRows
           .filter((r) => r.granted && audienceIdSet.has(r.contactId))
           .map((r) => r.contactId),
       );
       const grantedCount = grantedSet.size;
-      const ratio =
-        audience.total > 0 ? grantedCount / audience.total : 0;
+      const ratio = grantedCount / audienceTotal;
 
       if (grantedCount === 0) {
         findings.push({
@@ -218,7 +206,7 @@ export async function reviewCampaign(input: {
         findings.push({
           code: "low_marketing_consent",
           status: "needs_review",
-          message: `Only ${grantedCount} of ${audience.total} audience contacts (${Math.round(
+          message: `Only ${grantedCount} of ${audienceTotal} audience contacts (${Math.round(
             ratio * 100,
           )}%) have marketing consent on file.`,
         });
@@ -226,7 +214,7 @@ export async function reviewCampaign(input: {
         findings.push({
           code: "marketing_consent_ok",
           status: "good",
-          message: `${grantedCount} of ${audience.total} audience contacts (${Math.round(
+          message: `${grantedCount} of ${audienceTotal} audience contacts (${Math.round(
             ratio * 100,
           )}%) have marketing consent on file.`,
         });

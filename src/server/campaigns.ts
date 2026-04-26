@@ -528,7 +528,7 @@ export async function materializeRecipients(input: {
   return { inserted, total: fullRows.length };
 }
 
-async function fetchAllAudienceIds(
+export async function fetchAllAudienceIds(
   tenantId: string,
   filter: AudienceFilter,
 ): Promise<{ id: string }[]> {

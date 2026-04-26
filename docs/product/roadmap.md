@@ -3,6 +3,12 @@
 High-level phasing. Each phase ends with a shippable slice. Times are
 intentionally **not** dated — we move when a phase is genuinely done.
 
+## Document rule
+
+- This file is the stable phase map and future-direction document.
+- Live delivery status, blockers, validation state, and the next active tranche must be maintained only in [delivery-progress.md](./delivery-progress.md).
+- Do not create additional progress handoff docs unless explicitly requested.
+
 ## MVP cut line
 
 MVP = Phase 1 → Phase 6 (end of safe queued sending).
@@ -24,7 +30,7 @@ Everything after is post-MVP.
 	- minimal product / service create flow on `/t/{slug}/products` and `/t/{slug}/services`
 - Phase 5 remaining work for later tranches: CSV import, MinIO media uploads, full wizard steps 3–7
 - Phase 6 contract-ready WAPI surface is shipped (gateway client wrapper, HMAC-verified webhook receivers, `whatsapp_sessions` lifecycle, owner/admin connect UI, outbound worker skeleton, Dify provider resolution, secret resolver, Dify client, tenant-scoped context assembly, manual HITL draft action). Live gateway behavior is still gated on [Request 05](../request/05-wa-gateway-multitenancy.md).
-- Phase 7 functional tranche (composer, variant editor, safety review, follow-up sequence UI, dispatcher into the existing queue) is shipped on 2026-04-28. AI-drafted variants, reply-first runtime gating, rate-limit/warm-up, the long-running follow-up executor, and KPIs are still pending.
+- Phase 7 functional tranche is shipped on 2026-04-28, including the remaining slice: composer, variant editor, consent-aware safety review, follow-up sequence UI, queue-backed dispatcher, reply-first runtime gating, per-account warm-up/rate-limit support, long-running follow-up executor, Dify HITL variant suggestion, and campaign KPIs.
 - Omnichannel expansion is planned after MVP; Phase 6 remains intentionally WhatsApp-first while shared inbox and campaign abstractions should be designed to expand later.
 
 This distinction matters:
@@ -185,13 +191,14 @@ Already shipped in this phase:
 
 Still pending to complete the functional Phase 7 tranche:
 
-- AI drafter reads Business Brain + products/services (Dify-backed
-  variant suggestion; manual editor is fully shipped today)
-- Reply-first runtime gating in the dispatcher
-- Per-number rate limit + warm-up mode in the worker
-- Long-running follow-up executor / scheduler
-- Basic campaign KPIs panel
-- Consent (`contact_consents`) integration inside the safety review
+- interactive tester validation from [14-test-phase7-campaigns.md](../request/14-test-phase7-campaigns.md)
+- production operationalization of the manual worker scripts (`worker:outbound`, `worker:followups`) if/when you want them supervised continuously
+- live WhatsApp behavior remains externally gated by [Request 05](../request/05-wa-gateway-multitenancy.md)
+
+Phase 7 implementation guardrail after shipment:
+
+- treat follow-on work here as validation, hardening, and operationalization
+- do not reopen shipped campaign/follow-up surfaces unless validation finds a real defect
 
 **End of MVP**
 
