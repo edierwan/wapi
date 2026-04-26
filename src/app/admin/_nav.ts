@@ -26,9 +26,7 @@ export type AdminNavItem = {
  * sidebar and the /admin overview tiles so the two stay in sync.
  *
  * Mark `status: 'ready'` only when the underlying module ships beyond
- * a placeholder. Currently every module is `placeholder` per the
- * Phase 5–7 acceptance scope; full modules ship progressively in
- * Phase 8 onwards.
+ * a placeholder and exposes useful operational UI.
  */
 export const ADMIN_NAV: AdminNavItem[] = [
   {
@@ -43,35 +41,35 @@ export const ADMIN_NAV: AdminNavItem[] = [
     label: "Tenants",
     icon: Building2,
     description: "All workspaces, status, plan, owners.",
-    status: "placeholder",
+    status: "ready",
   },
   {
     href: "/admin/users",
     label: "Users",
     icon: UsersIcon,
     description: "Global user directory, system roles.",
-    status: "placeholder",
+    status: "ready",
   },
   {
     href: "/admin/wa-sessions",
     label: "WhatsApp Sessions",
     icon: Smartphone,
     description: "Connected numbers, session health.",
-    status: "placeholder",
+    status: "ready",
   },
   {
     href: "/admin/jobs",
     label: "Jobs / Queue",
     icon: ListChecks,
     description: "Send queue, failures, warm-up state.",
-    status: "placeholder",
+    status: "ready",
   },
   {
     href: "/admin/ai",
     label: "AI Providers",
     icon: Cpu,
     description: "Shared Dify / Ollama defaults, per-tenant overrides.",
-    status: "placeholder",
+    status: "ready",
   },
   {
     href: "/admin/billing",
@@ -106,7 +104,7 @@ export const ADMIN_NAV: AdminNavItem[] = [
     label: "Settings",
     icon: Settings,
     description: "Platform settings, feature flags, defaults.",
-    status: "placeholder",
+    status: "ready",
   },
 ];
 

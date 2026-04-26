@@ -49,9 +49,9 @@ export default async function AdminOverviewPage() {
         </p>
         <p className="text-xs text-[var(--muted-foreground)]">
           Use the sidebar to jump to a module. Tiles below mirror the
-          sidebar so you can scan from one screen. Most modules are
-          placeholders until Phase 8 — the data foundation (Phase 5–7)
-          is in place; the operational UI lands progressively.
+          sidebar so you can scan from one screen. The admin console is
+          now partially operational: shipped modules show <em>Ready</em>,
+          while later tranches remain explicitly staged.
         </p>
       </header>
 

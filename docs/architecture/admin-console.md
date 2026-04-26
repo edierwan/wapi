@@ -89,7 +89,20 @@ Support admin can "view as tenant owner" on a specific tenant:
     `AdminPlaceholder` component until its module ships.
   - Access control uses the `system.admin.access` permission (no email
     hardcoding).
-- **Phase 8**: build admin console v1 (tenants + users + WA sessions + audit + system-health).
+- **Phase 8 (partially shipped)**:
+  - shipped read-first modules:
+    - `/admin/tenants`
+    - `/admin/users`
+    - `/admin/wa-sessions`
+    - `/admin/jobs`
+    - `/admin/ai`
+    - `/admin/settings`
+    - `/admin/system-health`
+  - still pending for later admin tranches:
+    - `/admin/billing`
+    - `/admin/audit`
+    - `/admin/abuse`
+    - tenant detail pages / audited support mode / destructive support actions
 - **Phase 9**: add billing surfaces.
 - **Phase 10**: impersonation + abuse/risk dashboard. **TODO**: future
   support mode must let system admins inspect tenant workspaces with

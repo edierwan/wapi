@@ -1,6 +1,6 @@
 # WAPI Delivery Progress
 
-Last updated: 2026-04-26 (Phase 8b interactive defects A+B fixed)
+Last updated: 2026-04-26 (tenant logout + admin users shipped; Request 05 re-assessed)
 
 ## Primary delivery ledger
 
@@ -24,26 +24,134 @@ Last updated: 2026-04-26 (Phase 8b interactive defects A+B fixed)
 - The Dify multi-tenant architecture plan is now updated to reflect actual shipped schema versus missing runtime integration.
 - Omnichannel expansion has been reviewed as a later roadmap track; current shipped transport integration remains WhatsApp-first and should not be mistaken for the final channel model.
 - Local Phase 8b worker runtime defect fixed: standalone worker scripts no longer die on `Cannot find module 'server-only'` before the supervisor can run.
+- Tenant workspace navigation now exposes a visible sign-out control for authenticated users.
+- `/admin/users` is now the first real test-ops admin module: global directory, tenant-membership visibility, system-role visibility, and guarded delete-user cleanup for repeated test cycles.
+- Request 05 was re-audited against the local gateway source. `getouch.co/services/wa/server.mjs` still runs one module-scoped socket and one shared auth directory, so true multi-tenant WhatsApp runtime remains blocked at the gateway layer.
 
 ## Admin page status
 
-- The current admin page is expected to be mostly `Coming soon`.
-- The screenshot provided by the tester matches the intended shipped state:
-  - admin layout rendered
-  - `development` environment badge visible
-  - `SYSTEM_SUPER_ADMIN` role chip visible
-  - signed-in admin email visible
-  - overview route active
-  - sidebar rendered
-  - placeholder module cards rendered
-- This is not an incomplete bug for the current stage.
-- It becomes missing functionality only when the plan explicitly moves into the admin-module tranche.
+- The admin area is no longer mostly placeholder.
+- Real admin modules currently shipped:
+  - `/admin`
+  - `/admin/users`
+  - `/admin/tenants`
+  - `/admin/wa-sessions`
+  - `/admin/jobs`
+  - `/admin/ai`
+  - `/admin/settings`
+  - `/admin/system-health`
+- Remaining placeholder modules in this tranche:
+  - `/admin/billing`
+  - `/admin/audit`
+  - `/admin/abuse`
+- `/admin/users` is the immediate tenant-QA unblocker:
+  - inspect global users
+  - inspect tenant memberships
+  - inspect system roles
+  - search by email / name / phone
+  - clear pending-registration and OTP rows for repeat registration tests
+  - delete non-protected test users only with typed email confirmation
+  - prevent deleting the current admin session or protected system-admin accounts
 
 Interpretation for the next Coder AI round:
 
-- do not spend the next round turning every admin card into a full module by default
-- treat the admin shell as complete for now
-- only build full admin modules if we explicitly choose to advance that phase
+- do not regress the shipped admin modules back to placeholders
+- treat `/admin/billing`, `/admin/audit`, and `/admin/abuse` as the remaining staged modules
+- use the shipped read-only modules for QA/support before opening a broader admin-write tranche
+
+## Admin module reconciliation and delivery
+
+Audit result on 2026-04-26:
+
+- **Confirmed mismatch** before this round:
+  - docs claimed `/admin/users` was already shipped
+  - code had `/admin/users` as real, but `/admin/tenants`, `/admin/wa-sessions`, `/admin/jobs`, `/admin/ai`, and `/admin/settings` were still placeholder-only routes
+  - live dev/prod branch mapping was correct, but the deployed runtime did not expose commit SHA publicly
+- Git audit result:
+  - local branch: `develop`
+  - local `develop` vs `origin/develop`: in sync (`88af252` before this round)
+  - local `main` vs `origin/main`: in sync (`cc7147f` before this round)
+  - `develop` contains linear feature commits; `main` contains merge commits from develop
+- Deployed-state audit result:
+  - `wapi-dev.getouch.co` runs Coolify branch `develop`
+  - `wapi.getouch.co` runs Coolify branch `main`
+  - deployed image tags resolved to:
+    - dev image tag `t1xhkiq5wah66nss0onb7fpf:88af2529cd6e9332ade643951c894374310a69dd`
+    - prod image tag `nql6rdsjrcmlvcee1o2dz8wd:cc7147f99597b5d06a8bb7505f6baefd046e0703`
+  - current runtime still does not expose commit SHA via `/api/health`; commit truth was verified from Coolify image tags on the host
+
+Modules delivered in this round:
+
+- `/admin/users`
+  - search by email/name/phone
+  - reset test artifacts action
+  - typed-confirm delete for non-protected test users
+  - self-delete blocked
+  - protected system-admin delete blocked
+- `/admin/tenants`
+  - real tenant directory
+  - search/filter
+  - member counts and owner/admin counts
+  - workspace links
+- `/admin/wa-sessions`
+  - cross-tenant account/session monitor
+  - request-05 blocker banner
+  - details view on the page
+  - tenant WhatsApp links
+- `/admin/jobs`
+  - queue counts
+  - worker summary
+  - recent failures
+- `/admin/ai`
+  - provider registry and tenant override summary
+  - secret mode visibility without secret leakage
+- `/admin/settings`
+  - read-only runtime/env/feature summary without secret leakage
+
+Modules still placeholder after this round:
+
+- `/admin/billing`
+- `/admin/audit`
+- `/admin/abuse`
+
+Files changed in this admin tranche:
+
+- `src/app/admin/users/{page.tsx,actions.ts}`
+- `src/app/admin/tenants/page.tsx`
+- `src/app/admin/wa-sessions/page.tsx`
+- `src/app/admin/jobs/page.tsx`
+- `src/app/admin/ai/page.tsx`
+- `src/app/admin/settings/page.tsx`
+- `src/app/admin/{_nav.ts,page.tsx,layout.tsx}`
+- `docs/request/11-test-admin-console.md`
+- `docs/product/delivery-progress.md`
+- `docs/product/roadmap.md`
+- `docs/architecture/admin-console.md`
+- `.github/prompts/wapi-next-phase-delivery.prompt.md`
+
+Validation in this round:
+
+- `pnpm typecheck` — pass after `/admin/users` hardening
+- `pnpm typecheck` — pass after the wider admin module delivery
+- full validation still required at end of tranche:
+  - `pnpm test:unit`
+  - `pnpm typecheck`
+  - `pnpm build`
+
+Remaining manual checks:
+
+- signed-in browser smoke test on dev for:
+  - `/admin`
+  - `/admin/users`
+  - `/admin/tenants`
+  - `/admin/wa-sessions`
+  - `/admin/jobs`
+  - `/admin/ai`
+  - `/admin/settings`
+  - `/admin/system-health`
+- non-admin redirect confirmation on `/admin/users`
+- mobile / narrow viewport pass for the updated nav badges and real-module pages
+- repeat tenant registration reset flow using `/admin/users`
 
 ## Verified in this pass
 
@@ -72,6 +180,7 @@ Interpretation for the next Coder AI round:
   - `/admin/tenants`
   - `/admin/users`
   - `/admin/wa-sessions`
+- Validation rerun after the tenant logout and admin-users delivery still passes with the same route set.
 
 ### Live DB smoke checks
 
@@ -103,6 +212,12 @@ Both `wapi.dev` and `wapi` currently report:
 - Admin permission usage is server-side and present in the expected WAPI surfaces:
   - `src/app/admin/layout.tsx`
   - `src/app/login/actions.ts`
+- Tenant sign-out is now exposed in the shared authenticated navbar:
+  - `src/components/layout/navbar.tsx`
+- Admin user-management test-ops surface is now shipped:
+  - `src/app/admin/users/page.tsx`
+  - `src/app/admin/users/actions.ts`
+  - `src/app/admin/_nav.ts`
 - Phase 5 functional tenant UI shipped (tranche 1) with explicit tenant scoping on every query:
   - `src/server/contacts.ts`
   - `src/server/business-memory.ts`
@@ -225,15 +340,19 @@ Partially verified.
 Verified:
 
 - `/admin` shell routes are built
-- placeholder admin sub-routes are built
+- real admin sub-routes now ship for users, tenants, wa-sessions, jobs, ai, settings, and system-health
 - anonymous access redirects to `/login?next=/admin`
 - admin permission enforcement is server-side in `src/app/admin/layout.tsx`
-- tester-provided signed-in screenshot matches the expected placeholder shell state
+- tester-provided signed-in screenshot matches the expected shell state for the overview
+- `/admin/users` now renders as a real test-ops module with search, typed confirmation, safe reset, and protected-account guards
+- `/admin/tenants`, `/admin/wa-sessions`, `/admin/jobs`, `/admin/ai`, and `/admin/settings` now render operational read-only modules instead of `AdminPlaceholder`
 
 Not completed in this pass:
 
 - authenticated super-admin happy-path browser pass
-- placeholder tile click-through as a signed-in admin
+- live browser pass for `/admin/users` list + reset/delete flow
+- live browser pass for `/admin/tenants`, `/admin/wa-sessions`, `/admin/jobs`, `/admin/ai`, `/admin/settings`
+- placeholder tile click-through as a signed-in admin for the remaining placeholder modules (`billing`, `audit`, `abuse`)
 - non-admin signed-in redirect to `/access-denied?reason=admin`
 - mobile/narrow viewport visual check
 
@@ -384,7 +503,7 @@ defects.
   webhook + Dify routes still register; HMAC verifier and conversation
   key invariants unchanged in this pass.
 - Test 11 (Admin shell) — automated parts re-validated: 11 admin routes
-  still register; `Coming soon` placeholders are still expected.
+  still register; `/admin/users`, `/admin/tenants`, `/admin/wa-sessions`, `/admin/jobs`, `/admin/ai`, `/admin/settings`, and `/admin/system-health` are now real modules.
 - Test 08 (Phase 5) — automated parts re-validated: contacts / brain /
   catalog routes still register.
 
@@ -393,7 +512,7 @@ defects.
 - **Test 08**: contact edit/delete, tag toggle, Business Brain CRUD,
   `Recompute & save`, product/service create form, hidden-field tamper.
 - **Test 11**: placeholder tile click-through across all modules and the
-  mobile/narrow-viewport visual pass.
+  mobile/narrow-viewport visual pass, plus real browser checks for `/admin/users`, `/admin/tenants`, `/admin/wa-sessions`, `/admin/jobs`, `/admin/ai`, and `/admin/settings`.
 - **Test 13**: fix the clinic-tenant connect crash first, then re-run
   connect/reset/disconnect; still pending curl-driven webhook signature
   exercise, live Dify call with a real `DIFY_DEFAULT_API_KEY`, and an
@@ -714,11 +833,14 @@ contact-less conversations, and truncates previews`).
 
 ### Request 05 — gateway multi-tenancy
 
-Still blocked externally.
+Still blocked externally — gateway refactor round in progress.
 
+- Gateway refactor round started. WAPI-side is not being patched further unless a contract mismatch is found. The target is `getouch.co/services/wa/server.mjs` multi-session refactor.
+- Implementation tracking lives in [docs/request/05-wa-gateway-multitenancy.md](../request/05-wa-gateway-multitenancy.md) under the `2026-04-26 Gateway Implementation Attempt` section.
 - WAPI Phase 6 schema is ready to receive gateway integration.
 - WAPI contract-ready app-side integration is shipped.
 - The remaining blocker is live external gateway behavior: real QR, real send, and real session-scoped webhook traffic.
+- Local gateway audit on 2026-04-26 reconfirmed the root cause: `getouch.co/services/wa/server.mjs` still uses one global Baileys socket plus one shared auth directory, with no `/api/sessions/*` runtime.
 - The gateway itself is still the controlling external dependency for session-scoped WhatsApp readiness.
 
 ## Recommended next tranche for Coder AI
@@ -739,14 +861,17 @@ For the next Coder AI run, the intended flow is:
 
 ### Immediate next actions
 
-1. Hand the listed interactive flows to the human tester (Test 08, 11,
-   13, 14 — see the "Pending interactive checks" list in the
-   release-hardening pass section above).
-2. Do not reopen shipped Phase 5/6/7 surfaces unless interactive
-   validation finds a real defect.
+1. Hand the listed interactive flows to the human tester, with priority on:
+  `/admin/users` reset/delete flow,
+  `/admin/tenants`,
+  `/admin/wa-sessions`,
+  non-admin admin denial,
+  Test 13 WhatsApp connect/reset/disconnect recheck,
+  and Test 15 inbox recheck.
+2. Do not reopen the shipped admin modules unless live validation finds a real defect.
 3. Keep [Request 05](../request/05-wa-gateway-multitenancy.md) explicit
-   as the external blocker for live WhatsApp gateway behavior.
-4. Begin **Phase 8 groundwork** with the following cuts, in order, all
+  as the external blocker for live WhatsApp gateway behavior.
+4. If the next round stays WAPI-only, continue **Phase 8 groundwork** with the following cuts, in order, all
    tenant-scoped and channel-agnostic by design:
   - 8a. Shared inbox model: a tenant-scoped conversations view that
     pivots on `tenant_id + normalized_phone_number` and reads
@@ -765,9 +890,12 @@ For the next Coder AI run, the intended flow is:
   - 8d. Omnichannel-safe abstractions: rename channel-implicit helpers
     to channel-aware where the rename is cheap (e.g. `wa-gateway.ts`
     stays WhatsApp; the inbox view is the channel-agnostic seam).
-5. Keep [docs/product/delivery-progress.md](./delivery-progress.md)
+5. If the next round expands into `getouch.co`, start the real gateway
+  refactor in `services/wa` from the 2026-04-26 Request 05 checklist
+  instead of patching more WAPI-side fallbacks.
+6. Keep [docs/product/delivery-progress.md](./delivery-progress.md)
    updated as the live progress ledger after each tranche.
-6. After each delivery slice, run the matching phase test scripts
+7. After each delivery slice, run the matching phase test scripts
    (typecheck, build, route registration, live health, narrowest
    behavior probes) and write the outcome here.
 
@@ -790,8 +918,8 @@ Remaining cycles needed to close MVP+1:
 
 1. **Cycle N+1**: Phase 8c — Smart Customer Memory schema seed and
    read-only writes from inbound/outbound events.
-2. **Cycle N+2**: full admin-module tranche (turn `Coming soon` cards
-   into the first three real modules: Tenants, Users, AI).
+2. **Cycle N+2**: admin-module continuation (turn the next useful
+  placeholder cards into real modules: Tenants, AI, WA Sessions).
 3. **Cycle N+3** (buffer): release hardening, billing groundwork,
    omnichannel architecture finalization.
 

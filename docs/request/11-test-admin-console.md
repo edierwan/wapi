@@ -1,9 +1,9 @@
-# 11 — Test plan: Admin console shell (sidebar + RBAC + placeholders)
+# 11 — Test plan: Admin console reconciliation + delivered modules
 
-> Validates the new `/admin` console layout introduced after Phase 5–7.
-> Scope: console **shell** + access control. The actual admin modules
-> (tenants, users, wa-sessions, etc.) are still placeholders; their
-> functional tests come with Phase 8.
+> Validates the admin console after the reconciliation pass that turned
+> key routes into real operational modules.
+> Scope: shell + RBAC + shipped modules (`users`, `tenants`,
+> `wa-sessions`, `jobs`, `ai`, `settings`, `system-health`).
 
 ## 0 · Where to test
 
@@ -67,33 +67,92 @@ The development DB has a working super-admin already:
      Abuse Monitor · Settings.
 
 6. **Overview** is highlighted (active), and the cards in the main
-   content match the sidebar (10 cards, every non-overview entry with a
-   "Coming soon" badge).
+   content match the sidebar.
+7. Badge truth must match delivered state:
+
+   - `Ready`: Tenants, Users, WhatsApp Sessions, Jobs / Queue,
+     AI Providers, System Health, Settings.
+   - `Coming soon`: Billing, Audit Logs, Abuse Monitor.
 
 ## 3 · Sub-route navigation
 
-For each placeholder route, click the sidebar link OR the matching tile
-on the overview:
+For each shipped route, click the sidebar link OR the matching tile on
+the overview:
 
-| Click | Expected URL | Expected highlight |
-|---|---|---|
-| Tenants            | `/admin/tenants`        | Tenants            |
-| Users              | `/admin/users`          | Users              |
-| WhatsApp Sessions  | `/admin/wa-sessions`    | WhatsApp Sessions  |
-| Jobs / Queue       | `/admin/jobs`           | Jobs / Queue       |
-| AI Providers       | `/admin/ai`             | AI Providers       |
-| Billing            | `/admin/billing`        | Billing            |
-| Audit Logs         | `/admin/audit`          | Audit Logs         |
-| System Health      | `/admin/system-health`  | System Health      |
-| Abuse Monitor      | `/admin/abuse`          | Abuse Monitor      |
-| Settings           | `/admin/settings`       | Settings           |
+| Click | Expected URL | Expected highlight | Expected state |
+|---|---|---|---|
+| Tenants            | `/admin/tenants`        | Tenants            | real module |
+| Users              | `/admin/users`          | Users              | real module |
+| WhatsApp Sessions  | `/admin/wa-sessions`    | WhatsApp Sessions  | real module |
+| Jobs / Queue       | `/admin/jobs`           | Jobs / Queue       | real module |
+| AI Providers       | `/admin/ai`             | AI Providers       | real module |
+| Billing            | `/admin/billing`        | Billing            | placeholder |
+| Audit Logs         | `/admin/audit`          | Audit Logs         | placeholder |
+| System Health      | `/admin/system-health`  | System Health      | real module |
+| Abuse Monitor      | `/admin/abuse`          | Abuse Monitor      | placeholder |
+| Settings           | `/admin/settings`       | Settings           | real module |
 
-Every placeholder must render:
+Expected behavior by route:
 
-- Module title and description.
-- "Coming soon" badge.
-- A short paragraph explaining the placeholder.
-- A "← Back to overview" link that returns to `/admin`.
+- Real modules render useful operational UI or an explicit empty state.
+- Placeholder modules still render the shared `AdminPlaceholder` shell.
+- Nav status badges must match the actual page state.
+
+## 3 · Real module checks
+
+### `/admin/users`
+
+- Page renders a user directory, not `AdminPlaceholder`.
+- Search box exists.
+- Each row shows email, name or fallback, phone, memberships, system roles, created date.
+- Current admin row is visibly protected from deletion.
+- Protected system-admin accounts cannot be deleted.
+- Reset action is visible.
+- Delete action requires typed email confirmation.
+
+### Admin Users — test tenant registration reset flow
+
+1. Register a test tenant/user.
+2. Confirm the user appears in `/admin/users`.
+3. Confirm tenant membership appears.
+4. Use the admin reset/delete action.
+5. Confirm pending registration and OTP rows are cleared.
+6. Confirm the same email/phone can register again.
+7. Confirm the current admin cannot delete itself.
+8. Confirm non-admin cannot access `/admin/users`.
+
+### `/admin/tenants`
+
+- Page renders a tenant directory, not `AdminPlaceholder`.
+- Search/filter controls exist.
+- Each row shows name, slug, plan/status, member counts, and workspace link.
+- Empty-state text is clear if there are no rows.
+
+### `/admin/wa-sessions`
+
+- Page renders session/account monitoring UI, not `AdminPlaceholder`.
+- Request 05 blocker banner is visible.
+- Rows show tenant, account, gateway, status, phone, and last-connected data when present.
+- `View details` opens a details card on the page.
+- `Tenant WhatsApp` link points to `/t/{slug}/whatsapp`.
+- No destructive gateway control is exposed.
+
+### `/admin/jobs`
+
+- Page shows queue counts and worker summary.
+- Page links to `/admin/system-health`.
+- Recent failures list does not expose secrets.
+
+### `/admin/ai`
+
+- Page shows provider counts and provider registry.
+- Secret mode is shown as `env ref` / `literal ref` / `custom ref` / `none`.
+- No raw secret values are shown.
+
+### `/admin/settings`
+
+- Page shows environment, app URL, routing mode, public gateway URLs, and feature flags.
+- No secrets are shown.
 
 ## 4 · Active-route highlight (deep route stub)
 
@@ -104,7 +163,7 @@ For now, expect Next.js 404 on the unknown segment. This test will move
 to "must show Tenants highlighted on detail pages" once `/admin/tenants/[id]`
 ships in Phase 8.
 
-## 5 · Mobile / narrow-viewport check
+## 4 · Mobile / narrow-viewport check
 
 Resize the window below ~768 px. Expected:
 
@@ -112,32 +171,32 @@ Resize the window below ~768 px. Expected:
 - All nav items are still reachable.
 - Active highlight still tracks the route.
 
-## 6 · Theme persistence
+## 5 · Theme persistence
 
 1. Click the moon/sun toggle in the header — page switches theme.
 2. Reload — theme persists (cookie `wapi_theme=dark|light`).
 3. Navigate Overview → Tenants → Overview — theme remains stable.
 
-## 7 · Access control — non-admin user
+## 6 · Access control — non-admin user
 
 1. Sign out. Register or sign in as a **normal tenant user** (any user
    without a `user_system_roles` row).
 2. Visit `/admin` directly.
 3. **Expected**: redirect to `/access-denied?reason=admin`.
-4. Try `/admin/users`, `/admin/system-health`, `/admin/anything`.
+4. Try `/admin/users`, `/admin/tenants`, `/admin/wa-sessions`, `/admin/system-health`, `/admin/anything`.
    Expected: same redirect — every nested route is protected by the
    layout.
 5. The user's tenant-side flow (`/dashboard`, `/t/<slug>/...`) must
    still work — no regression.
 
-## 8 · Access control — anonymous user
+## 7 · Access control — anonymous user
 
 1. Sign out. Visit `/admin`.
 2. **Expected**: redirect to `/login?next=/admin`.
 3. Sign in as a normal user → bounced to `/access-denied?reason=admin`.
 4. Sign in as `admin@getouch.co` → land on `/admin`.
 
-## 9 · Access control — server-side enforcement
+## 8 · Access control — server-side enforcement
 
 Permission check is enforced in `src/app/admin/layout.tsx`. Verify there
 is no client-only gate that could be bypassed:
@@ -147,7 +206,7 @@ rg -n "system.admin.access" src/app src/server src/components
 # Should reference layout.tsx (server) — never a client component.
 ```
 
-## 10 · Login redirect rule
+## 9 · Login redirect rule
 
 - Admin user → `/admin`.
 - Non-admin user with at least one tenant membership → `/dashboard`.
@@ -171,7 +230,7 @@ even if they happen to own/belong to a tenant. Verify by:
 2. Sign out, sign in as admin → still lands on `/admin`.
 3. Cleanup: remove the membership row if it wasn't there before.
 
-## 11 · Phase 3 + Phase 4 regression spot checks
+## 10 · Phase 3 + Phase 4 regression spot checks
 
 The console rework should be additive. Re-run the most critical paths
 from `06-test-phase3.md` + `07-test-phase4.md`:
@@ -183,7 +242,7 @@ from `06-test-phase3.md` + `07-test-phase4.md`:
 - Non-owner blocked from onboarding writes.
 - Theme toggle works on both tenant pages and admin pages.
 
-## 12 · Build / typecheck
+## 11 · Build / typecheck
 
 From a fresh checkout:
 
@@ -209,17 +268,23 @@ Expected route table (excerpt):
 ƒ /admin/wa-sessions
 ```
 
-## 13 · Acceptance
+## 12 · Acceptance
 
 Acceptance is met when:
 
 1. Admin login lands on `/admin`.
 2. Sidebar + header render with environment badge, role chip, email,
    theme toggle, sign-out.
-3. All 10 placeholder sub-routes render with the shared
-   `AdminPlaceholder` shell + Coming-soon badge + Back-to-overview link.
-4. Active-route highlighting works for both exact and prefix matches.
-5. Non-admin users hit `/access-denied?reason=admin` on every
+3. Shipped modules render real operational UI on:
+   `/admin/users`, `/admin/tenants`, `/admin/wa-sessions`, `/admin/jobs`,
+   `/admin/ai`, `/admin/settings`, `/admin/system-health`.
+4. Remaining staged modules (`billing`, `audit`, `abuse`) still render
+   `AdminPlaceholder` and keep their Coming-soon badge.
+5. Active-route highlighting works for both exact and prefix matches.
+6. Non-admin users hit `/access-denied?reason=admin` on every
    `/admin/**` route.
-6. Phase 3 + Phase 4 regression checks still pass.
-7. typecheck + build succeed.
+7. The `/admin/users` tenant-registration reset flow works safely.
+8. No secrets are shown in `/admin/ai` or `/admin/settings`.
+9. The Request 05 blocker banner is visible in `/admin/wa-sessions`.
+10. Phase 3 + Phase 4 regression checks still pass.
+11. typecheck + build succeed.

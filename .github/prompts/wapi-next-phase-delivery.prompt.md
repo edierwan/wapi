@@ -11,11 +11,13 @@ Scope boundary:
 - Work only in the WAPI repo.
 - Treat the WhatsApp gateway multi-tenancy work from Request 05 as an external dependency unless you are implementing the WAPI-side integration contract.
 - Do not switch into Getouch portal work unless the task explicitly asks for it.
+- **Request 05 gateway exception:** If the user explicitly selects Request 05 gateway work, switch to the `getouch.co/services/wa` gateway workspace and update `docs/request/05-wa-gateway-multitenancy.md` plus `docs/product/delivery-progress.md`. Otherwise keep normal WAPI-only scope.
 
 Read these files first before planning or changing code:
 
 - [docs/product/delivery-progress.md](../../docs/product/delivery-progress.md)
 - [docs/product/roadmap.md](../../docs/product/roadmap.md)
+- [docs/request/05-wa-gateway-multitenancy.md](../../docs/request/05-wa-gateway-multitenancy.md)
 - [docs/architecture/ai-dify.md](../../docs/architecture/ai-dify.md)
 - [docs/architecture/customer-memory-core.md](../../docs/architecture/customer-memory-core.md)
 - [docs/request/13-test-phase6-contract-ready.md](../../docs/request/13-test-phase6-contract-ready.md)
@@ -37,7 +39,7 @@ Treat [docs/product/delivery-progress.md](../../docs/product/delivery-progress.m
 ## Required guardrails
 
 1. Preserve the current shipped truth from [docs/product/delivery-progress.md](../../docs/product/delivery-progress.md).
-2. Treat missing full admin modules as expected until the admin-module tranche is explicitly chosen.
+2. Treat only the remaining staged admin modules as expected placeholders, and preserve the already-shipped real modules: `/admin/system-health`, `/admin/users`, `/admin/tenants`, `/admin/wa-sessions`, `/admin/jobs`, `/admin/ai`, and `/admin/settings`.
 3. Keep Request 05 explicit as the external blocker for live WhatsApp behavior.
 4. Preserve multi-tenant Dify isolation: WAPI resolves tenant ownership first, then passes tenant-scoped context to Dify.
 5. Keep future inbox, campaign, and follow-up abstractions compatible with omnichannel rollout and Smart Customer Memory.
@@ -100,7 +102,7 @@ When a feature is interactive and cannot be fully verified automatically:
 Success means:
 
 1. the active work follows the status and next actions recorded in [docs/product/delivery-progress.md](../../docs/product/delivery-progress.md)
-2. the admin shell remains correctly treated as complete for its current scope
+2. the admin shell remains correctly treated for its current scope: `/admin/system-health`, `/admin/users`, `/admin/tenants`, `/admin/wa-sessions`, `/admin/jobs`, `/admin/ai`, and `/admin/settings` are real; only billing, audit, and abuse stay staged unless explicitly promoted
 3. docs reflect actual shipped state without duplicated handoff drift
 4. remaining blockers stay explicit, especially Request 05
 5. the relevant phase test scripts are executed after delivery work and their results are written back to [docs/product/delivery-progress.md](../../docs/product/delivery-progress.md)
