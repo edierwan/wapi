@@ -1,6 +1,14 @@
 # WAPI Delivery Progress
 
-Last updated: 2026-04-28
+Last updated: 2026-04-26 (release-hardening pass)
+
+## Primary delivery ledger
+
+- This is the single live source of truth for current status, blockers, validation state, and next actions.
+- Update this file after each meaningful validation or delivery step.
+- Use [roadmap.md](./roadmap.md) for stable phase direction only, not live progress tracking.
+- Use [wapi-next-phase-delivery.prompt.md](../../.github/prompts/wapi-next-phase-delivery.prompt.md) as the reusable Coder AI prompt shell.
+- Do not create extra brief or handoff files for routine progress updates.
 
 ## Current status
 
@@ -127,8 +135,8 @@ Interpretation:
 
 - Phase 6 contract-ready WAPI side is now functional (HMAC verify, session lifecycle, owner/admin UI, Dify resolution + HITL draft).
 - Live WhatsApp gateway behavior (real QR + real send + real status webhooks) still depends on Request 05.
-- Phase 7 functional tranche is shipped, but it still has a follow-on tranche for AI variants, reply-first gating, worker hardening, KPIs, and consent-aware safety checks.
-- The next real product tranche should not rebuild shipped Phase 6 or shipped Phase 7 foundations; it should validate them, then finish the remaining Phase 7 slice and keep omnichannel / Smart Customer Memory compatibility intact.
+- Phase 7 functional tranche and its planned remaining slice are now shipped.
+- The next real product tranche should not rebuild shipped Phase 6 or shipped Phase 7 foundations; it should validate them, close out release-hardening work, and then move into Phase 8 groundwork while keeping omnichannel / Smart Customer Memory compatibility intact.
 
 ## Test-script result summary
 
@@ -274,6 +282,95 @@ request doc is now in one of three states:
 
 - `pnpm db:seed` exiting with code `1` in one local run was caused by a missing local `.env.local`, not by an application defect in the shipped Phase 5/6/7 work.
 
+## Release-hardening pass (2026-04-26)
+
+Scope: validation, defect close-out, and doc alignment after the Phase 7
+remaining slice landed. No reopening of shipped surfaces beyond real
+defects.
+
+### Real defects fixed in this pass
+
+- **Consent-coverage rule miscounted on filtered audiences.**
+  `src/server/campaign-safety.ts` was computing the granted set against
+  the tenant's full active-contacts list, then dividing by the
+  preview-audience total. When the campaign's `audienceFilter` narrowed
+  the audience (tags or lead status), the ratio could exceed 100% and
+  the wrong status would be emitted. Fixed by promoting
+  `fetchAllAudienceIds(tenantId, filter)` in `src/server/campaigns.ts` to
+  exported and using it as the single source of truth for the audience
+  ID set, then computing both numerator and denominator against the same
+  filtered set.
+- **Follow-up enrollment returned the wrong reason for missing sequences.**
+  `enrollContact` returned `{ ok: false, reason: "already_enrolled" }`
+  when the sequence did not belong to the tenant. Added a `no_sequence`
+  reason and used it for the not-found path.
+- **Test plan duplicated and outdated "Out of scope" sections.**
+  `docs/request/14-test-phase7-campaigns.md` listed the tranche-4 items
+  (long-running follow-up executor, Dify variant suggestion, consent
+  rule) as out of scope while also documenting them as shipped under
+  section H. Cleaned up to a single accurate "Out of scope" block.
+
+### Validation run in this pass
+
+- `pnpm typecheck` — pass.
+- `pnpm build` — pass. All Phase 5/6/7 routes still register:
+  `/api/wa/webhooks/{qr,connected,disconnected,inbound,status}`,
+  `/t/[tenantSlug]/{ai/draft,brain,campaigns,campaigns/[campaignId],contacts,contacts/[contactId],followups,followups/[sequenceId],whatsapp}`.
+- Live deploy health: `wapi-dev.getouch.co` → `200`,
+  `wapi.getouch.co` → `200`.
+- Narrowest-behavior code audit:
+  - `campaign-safety.ts` consent path now reads from the same audience
+    resolver the dispatcher uses (`fetchAllAudienceIds`), so safety
+    review and dispatch see the same audience.
+  - `campaign-dispatcher.ts` reply-first gating still excludes recipients
+    with `excluded_reason='reply_first:no_prior_inbound'` and never
+    queues them.
+  - `outbound-rate-limit.ts` claim path is non-atomic peek-then-claim
+    with a `WHERE status='queued'` guard on the second UPDATE — safe
+    for the current single-worker model and documented as such.
+  - `follow-up-executor.ts` enrollment idempotency check uses
+    `message_queue.payload->>'sequenceId'` and is tenant-bounded via
+    `getSequence` and the contact tenant guard.
+
+### Tests run after delivery work
+
+- Test 14 (Phase 7 campaigns) — automated parts re-validated:
+  - route registration: pass
+  - `pnpm typecheck` / `pnpm build`: pass
+  - consent-rule defect (above) fixed and re-typechecked
+  - test plan (`docs/request/14-test-phase7-campaigns.md`) updated to
+    remove contradictory out-of-scope claims
+- Test 13 (Phase 6 contract-ready) — automated parts re-validated:
+  webhook + Dify routes still register; HMAC verifier and conversation
+  key invariants unchanged in this pass.
+- Test 11 (Admin shell) — automated parts re-validated: 11 admin routes
+  still register; `Coming soon` placeholders are still expected.
+- Test 08 (Phase 5) — automated parts re-validated: contacts / brain /
+  catalog routes still register.
+
+### Pending interactive checks (still owned by the human tester)
+
+- **Test 08**: contacts CRUD + tag toggle, Business Brain CRUD,
+  `Recompute & save`, product/service create form, hidden-field tamper.
+- **Test 11**: signed-in super-admin happy path, placeholder tile
+  click-through, non-admin redirect to `/access-denied?reason=admin`,
+  mobile/narrow viewport.
+- **Test 13**: connect/reset/disconnect on `/t/{slug}/whatsapp`,
+  curl-driven webhook signature exercise, live Dify call with a real
+  `DIFY_DEFAULT_API_KEY`, outbound-worker dry-run with a queued row.
+- **Test 14**: composer happy path A–G in a browser session, plus the
+  H1–H6 tranche-4 paths for consent / reply-first / rate limit /
+  follow-up executor / AI variant suggestion / KPI panel.
+
+### Blockers carried forward
+
+- **Request 05** (gateway multi-tenancy) remains the external blocker
+  for live WhatsApp behavior. WAPI-side contract is shipped and
+  contract-ready; the live-send / live-QR / live-status loop still
+  depends on the gateway side.
+- Local `pnpm db:seed` requires a local `.env.local` with
+  `DATABASE_URL`. Not a defect; environment-only.
+
 ## Blockers and limits in this pass
 
 - I do not have the current super-admin password in this conversation, so I could not complete the signed-in admin browser checks from Test 11.
@@ -299,22 +396,78 @@ Coder AI should use this file as the current-state source of truth and update it
 Workspace prompt prepared for the next round:
 
 - [wapi-next-phase-delivery.prompt.md](../../.github/prompts/wapi-next-phase-delivery.prompt.md)
-- short handoff pointer: [coder-ai-next-phase-brief.md](./coder-ai-next-phase-brief.md)
+
+For the next Coder AI run, the intended flow is:
+
+1. open the workspace prompt
+2. read this file as the only live progress ledger
+3. deliver the active phase work first
+4. run the relevant phase test scripts and validation flows after the delivery work
+5. update this file again with the results, blockers, and next-phase recommendation
 
 ### Immediate next actions
 
-1. Complete the remaining interactive checks for Test 08, Test 11, Test 13 contract-ready, and Test 14 Phase 7 campaigns.
-2. Continue the remaining Phase 7 tranche instead of rebuilding shipped Phase 6/Dify or already-landed campaign surfaces.
-3. Prioritize the unfinished Phase 7 items:
-  - AI variant suggestion via Dify HITL
-  - reply-first runtime gating
-  - per-number rate limit / warm-up
-  - long-running follow-up executor
-  - KPIs panel
-  - consent integration inside the safety review
-4. Keep Request 05 as the external blocker for live WhatsApp behavior.
-5. Preserve omnichannel and Smart Customer Memory compatibility while extending inbox, campaign, and follow-up abstractions.
-6. Keep this file updated as the live progress ledger.
+1. Hand the listed interactive flows to the human tester (Test 08, 11,
+   13, 14 — see the "Pending interactive checks" list in the
+   release-hardening pass section above).
+2. Do not reopen shipped Phase 5/6/7 surfaces unless interactive
+   validation finds a real defect.
+3. Keep [Request 05](../request/05-wa-gateway-multitenancy.md) explicit
+   as the external blocker for live WhatsApp gateway behavior.
+4. Begin **Phase 8 groundwork** with the following cuts, in order, all
+   tenant-scoped and channel-agnostic by design:
+  - 8a. Shared inbox model: a tenant-scoped conversations view that
+    pivots on `tenant_id + normalized_phone_number` and reads
+    `inbound_messages` + `message_queue` together. No new schema yet;
+    use the existing tables. This is the surface that Smart Customer
+    Memory will plug into later.
+  - 8b. Operationalization of the worker scripts: a documented
+    supervised run mode (cron / systemd / Coolify scheduled command)
+    for `pnpm worker:outbound` and `pnpm worker:followups`, plus a
+    health probe row in `/admin/system-health` (still placeholder UI;
+    the data hook lands first).
+  - 8c. Smart Customer Memory schema seed (read-only at first):
+    `customer_memory_facts` keyed by
+    `(tenant_id, normalized_phone_number)`, with append-only writes
+    from inbound + outbound events. No runtime AI hook yet.
+  - 8d. Omnichannel-safe abstractions: rename channel-implicit helpers
+    to channel-aware where the rename is cheap (e.g. `wa-gateway.ts`
+    stays WhatsApp; the inbox view is the channel-agnostic seam).
+5. Keep [docs/product/delivery-progress.md](./delivery-progress.md)
+   updated as the live progress ledger after each tranche.
+6. After each delivery slice, run the matching phase test scripts
+   (typecheck, build, route registration, live health, narrowest
+   behavior probes) and write the outcome here.
+
+### Cycle budget toward MVP+1
+
+Tracking against the user's "fewer than 6 total cycles from here" target.
+After this round we have shipped:
+
+- Phase 5 tranche 1 (functional tenant UI)
+- Phase 6 contract-ready WAPI surface + Dify runtime foundation
+- Phase 7 functional tranche
+- Phase 7 remaining slice (consent / reply-first / rate limit /
+  follow-up executor / AI variant HITL / KPIs)
+- Release-hardening pass (this round)
+
+Remaining cycles needed to close MVP+1:
+
+1. **Cycle N+1**: Phase 8a — shared inbox view (tenant-scoped, channel-agnostic).
+2. **Cycle N+2**: Phase 8b — supervised worker run mode + system-health
+   data hook.
+3. **Cycle N+3**: Phase 8c — Smart Customer Memory schema seed and
+   read-only writes from inbound/outbound events.
+4. **Cycle N+4**: full admin-module tranche (turn `Coming soon` cards
+   into the first three real modules: Tenants, Users, AI).
+5. **Cycle N+5** (buffer): release hardening, billing groundwork,
+   omnichannel architecture finalization.
+
+That leaves us at **5 remaining cycles**, which fits inside the
+"fewer than 6 from here" budget if Request 05 unblocks before
+N+2 lands. If Request 05 slips, cycle N+2 may need to absorb a
+gateway-integration validation tranche (still inside the 6-cycle
+budget).
 
 ### Planning guardrail for the next round
 
@@ -326,17 +479,17 @@ Coder AI should split the next work into two choices instead of mixing them:
 Recommended priority:
 
 1. interactive validation and defect close-out for shipped Phase 5, Phase 6 contract-ready, and Phase 7 functional work
-2. remaining Phase 7 tranche items
+2. release hardening and blocker tracking
 3. omnichannel architecture and roadmap prep for future inbox/channel expansion
-4. Smart Customer Memory compatibility while shaping inbox/follow-up work
-5. release hardening and blocker tracking
+4. Smart Customer Memory compatibility while shaping inbox/customer/follow-up work
+5. Phase 8 groundwork only after the shipped slices are validated and hardened
 6. only then full admin modules unless business priorities change
 
 ### Specific corrections to prior planning
 
 1. The admin shell is shipped and real now.
 2. The admin nav shape is `11` total entries: `1` overview route plus `10` placeholder module routes.
-3. Phase 6 is functional contract-ready and Phase 7 already has a shipped functional tranche; remaining work is follow-on tranche work, not a reset.
+3. Phase 6 is functional contract-ready and Phase 7 shipped both its functional tranche and its planned remaining slice; next work is validation/hardening and then Phase 8 groundwork, not a reset.
 4. WAPI release-readiness should be separated from later roadmap tranches like full admin modules and campaign UI.
 5. The current admin screenshot should be treated as a pass for the shell state, not evidence that the shell failed.
 6. Dify in WAPI is no longer only schema-and-architecture ready; the first runtime foundation is now shipped.

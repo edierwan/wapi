@@ -29,7 +29,12 @@ import { listSteps, getSequence } from "@/server/followups";
 
 export type EnrollmentResult = {
   ok: boolean;
-  reason?: "no_steps" | "already_enrolled" | "no_account" | "no_contact";
+  reason?:
+    | "no_steps"
+    | "already_enrolled"
+    | "no_account"
+    | "no_contact"
+    | "no_sequence";
   scheduled?: number;
 };
 
@@ -76,7 +81,7 @@ export async function enrollContact(input: {
   const db = requireDb();
   // Tenant guard: sequence must belong to tenant.
   const sequence = await getSequence(input.tenantId, input.sequenceId);
-  if (!sequence) return { ok: false, reason: "already_enrolled" };
+  if (!sequence) return { ok: false, reason: "no_sequence" };
 
   // Tenant guard: contact must belong to tenant.
   const [contact] = await db
