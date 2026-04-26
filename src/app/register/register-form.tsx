@@ -19,12 +19,34 @@ const NATURES = [
 
 export function RegisterForm() {
   const [state, formAction, pending] = useActionState(registerAction, initial);
+  const values = state.values ?? {};
 
   return (
     <form action={formAction} className="mt-6 space-y-4">
-      <Field name="businessName" label="Business name" placeholder="Klinik ABC Sdn Bhd" required />
-      <Field name="fullName" label="Your full name" placeholder="Ada Lovelace" required autoComplete="name" />
-      <Field name="email" label="Email" type="email" placeholder="you@company.com" required autoComplete="email" />
+      <Field
+        name="businessName"
+        label="Business name"
+        placeholder="Klinik ABC Sdn Bhd"
+        defaultValue={values.businessName}
+        required
+      />
+      <Field
+        name="fullName"
+        label="Your full name"
+        placeholder="Ada Lovelace"
+        defaultValue={values.fullName}
+        required
+        autoComplete="name"
+      />
+      <Field
+        name="email"
+        label="Email"
+        type="email"
+        placeholder="you@company.com"
+        defaultValue={values.email}
+        required
+        autoComplete="email"
+      />
 
       <div className="grid grid-cols-[110px_1fr] gap-3">
         <div>
@@ -34,7 +56,7 @@ export function RegisterForm() {
           <select
             id="cc"
             name="phoneCountryCode"
-            defaultValue="+60"
+            defaultValue={values.phoneCountryCode || "+60"}
             className="h-10 w-full rounded-md border border-[var(--input)] bg-[var(--background)] px-2 text-sm focus:ring-2 focus:ring-[var(--ring)]"
           >
             <option value="+60">+60 MY</option>
@@ -48,6 +70,7 @@ export function RegisterForm() {
           name="phoneNumber"
           label="WhatsApp number"
           placeholder="123456789"
+          defaultValue={values.phoneNumber}
           inputMode="numeric"
           required
           autoComplete="tel-national"
@@ -81,6 +104,7 @@ export function RegisterForm() {
           <select
             id="businessNature"
             name="businessNature"
+            defaultValue={values.businessNature || ""}
             className="h-10 w-full rounded-md border border-[var(--input)] bg-[var(--background)] px-2 text-sm focus:ring-2 focus:ring-[var(--ring)]"
           >
             {NATURES.map((n) => (
@@ -95,6 +119,7 @@ export function RegisterForm() {
           label="Team size"
           type="number"
           placeholder="1"
+          defaultValue={values.numberOfAgents}
           min={1}
         />
       </div>

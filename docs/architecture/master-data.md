@@ -29,8 +29,10 @@ onboarding (products, services, bookings, lead capture, etc.).
 
 ## Product master
 
-Designed ERP-compatible. SME tenants only see simple forms; the schema
-is ready for variants / price lists / bundles / inventory.
+Designed ERP-compatible. SME tenants see a guided master-data editor; the
+schema is ready for variants, price lists, bundles, channel mapping, and inventory.
+
+Detailed design: [product-master-data.md](./product-master-data.md)
 
 ### `product_categories`
 
@@ -41,15 +43,17 @@ is ready for variants / price lists / bundles / inventory.
 
 - `id`, `tenant_id`, `category_id` (null)
 - `product_code` (tenant-unique), `sku`, `barcode`
-- `name`, `short_description`, `long_description`
+- `name`, `slug`, `short_description`, `long_description`
 - `product_type` enum: `physical | digital | bundle | consumable | other`
-- `status` enum: `active | inactive | archived`
+- `status` enum: `draft | active | inactive | archived`
 - `brand`
 - `unit_of_measure` (`pc`, `kg`, `pack`, …)
-- `default_price` numeric(18,4), `currency`
+- `default_price` numeric(18,4), `compare_at_price` numeric(18,4), `currency`
 - `cost_price` numeric(18,4) null
 - `tax_code` text null
 - `track_inventory` boolean
+- `ai_selling_notes`, `ai_faq_notes`
+- `tags` jsonb
 - `metadata` jsonb (loose fields)
 - timestamps
 
@@ -74,6 +78,11 @@ is ready for variants / price lists / bundles / inventory.
 ### `product_bundles`
 
 - parent product ⇄ child product/variant + quantity. Enables combo/package SKUs.
+
+### `product_channel_mappings`
+
+- future bridge to Shopee, Lazada, TikTok Shop, Shopify, WooCommerce, Facebook/Instagram shops, and custom channels
+- stores external ids, channel title/url/status, sync state, sync errors, and last-sync timing
 
 ### `inventory_locations` / `inventory_balances`
 
@@ -190,7 +199,7 @@ All transactional modules must be header + items.
 | Table group | Created in schema | UI shipped |
 |---|---|---|
 | `tenant_business_profiles` | **Phase 3 (now)** | Phase 3 onboarding |
-| `products`, `product_categories`, `product_prices`, `product_variants`, `product_media` | **Phase 3 (now)** | Phase 4 |
+| `products`, `product_categories`, `product_prices`, `product_variants`, `product_media` | **Phase 3 (now)** | Phase 5 guided editor |
 | `services`, `service_categories`, `service_packages`, `service_package_items`, `service_availability` | **Phase 3 (now)** | Phase 4 |
 | `price_lists`, `product_bundles`, `inventory_locations`, `inventory_balances` | Phase 4 | Phase 4+ |
 | `branches`, `business_hours`, `payment_methods` | Phase 4 | Phase 4 |

@@ -9,6 +9,7 @@ import {
   refIndustries,
   refLanguages,
   refTimezones,
+  refUnits,
   type RefBrandVoice,
   type RefBusinessNature,
   type RefCountry,
@@ -16,6 +17,7 @@ import {
   type RefIndustry,
   type RefLanguage,
   type RefTimezone,
+  type RefUnit,
 } from "@/db/schema";
 
 const ACTIVE = "active";
@@ -53,6 +55,15 @@ export async function listActiveLanguages(): Promise<RefLanguage[]> {
     .from(refLanguages)
     .where(eq(refLanguages.status, ACTIVE))
     .orderBy(asc(refLanguages.sortOrder), asc(refLanguages.name));
+}
+
+export async function listActiveUnits(): Promise<RefUnit[]> {
+  const db = requireDb();
+  return db
+    .select()
+    .from(refUnits)
+    .where(eq(refUnits.status, ACTIVE))
+    .orderBy(asc(refUnits.sortOrder), asc(refUnits.code));
 }
 
 export async function listActiveTimezones(): Promise<RefTimezone[]> {
@@ -99,6 +110,7 @@ export async function loadOnboardingReferenceData() {
   const [
     countries,
     currencies,
+    units,
     languages,
     timezones,
     industries,
@@ -107,13 +119,14 @@ export async function loadOnboardingReferenceData() {
   ] = await Promise.all([
     listActiveCountries(),
     listActiveCurrencies(),
+    listActiveUnits(),
     listActiveLanguages(),
     listActiveTimezones(),
     listActiveIndustries(),
     listActiveBusinessNatures(),
     listActiveBrandVoices(),
   ]);
-  return { countries, currencies, languages, timezones, industries, natures, voices };
+  return { countries, currencies, units, languages, timezones, industries, natures, voices };
 }
 
 /**

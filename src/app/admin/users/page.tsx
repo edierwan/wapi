@@ -101,7 +101,7 @@ export default async function Page({
         <div>
           <h1 className="text-xl font-semibold">Users</h1>
           <p className="text-sm text-[var(--muted-foreground)]">
-            Global user directory for test resets, tenant membership checks,
+            Global user directory for registration cleanup, tenant membership checks,
             and system-role visibility.
           </p>
         </div>
@@ -134,7 +134,7 @@ export default async function Page({
         <CardHeader>
           <CardTitle className="text-base">Search</CardTitle>
           <CardDescription>
-            Filter by email, display name, or phone before running test reset actions.
+            Filter by email, display name, or phone before running cleanup actions.
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -160,8 +160,8 @@ export default async function Page({
         <CardHeader>
           <CardTitle className="text-base">Directory</CardTitle>
           <CardDescription>
-            Reset clears pending registration and OTP rows for the same email or phone.
-            Delete removes the test user only after typed email confirmation and is blocked for protected system admins.
+            Cleanup clears pending registration and OTP rows for the same email or phone.
+            Delete removes the user only after typed email confirmation and is blocked for protected system admins.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
@@ -254,7 +254,7 @@ export default async function Page({
                             <form action={resetUserForTestingAction}>
                               <input type="hidden" name="userId" value={user.id} />
                               <Button type="submit" variant="ghost" size="sm" className="w-full">
-                                Reset test artifacts
+                                Clear registration artifacts
                               </Button>
                             </form>
                             <form action={deleteUserAction} className="space-y-2">
@@ -267,7 +267,7 @@ export default async function Page({
                                 className="w-full rounded-md border border-[var(--border)] bg-[var(--background)] px-3 py-2 text-xs"
                               />
                               <p className="text-left text-[11px] text-[var(--muted-foreground)]">
-                                Cleans pending registration and OTP rows; delete also removes memberships and the user record.
+                                Clears pending registration and OTP rows; delete also removes memberships and the user record.
                               </p>
                               <Button
                                 type="submit"
@@ -276,7 +276,7 @@ export default async function Page({
                                 disabled={isCurrentUser || isProtectedAdmin}
                                 className="w-full border-red-500/30 text-red-700 hover:bg-red-500/10 hover:text-red-700 dark:text-red-300"
                               >
-                                Delete test user
+                                Delete user
                               </Button>
                             </form>
                           </div>

@@ -277,6 +277,36 @@ async function main() {
   }
 
   // 7) sample product + service (so the UI has something to render)
+  let sampleCategory = (
+    await db
+      .select()
+      .from(schema.productCategories)
+      .where(
+        and(
+          eq(schema.productCategories.tenantId, tenant.id),
+          eq(schema.productCategories.code, "HAIRCARE"),
+        ),
+      )
+      .limit(1)
+  )[0];
+  if (!sampleCategory) {
+    sampleCategory = (
+      await db
+        .insert(schema.productCategories)
+        .values({
+          tenantId: tenant.id,
+          code: "HAIRCARE",
+          name: "Haircare",
+          description: "Demo product category for seeded catalog items.",
+          status: "active",
+        })
+        .returning()
+    )[0]!;
+    console.log("  ✓ created sample product category HAIRCARE");
+  } else {
+    console.log("  • sample product category exists");
+  }
+
   const haveProduct = (
     await db
       .select()
@@ -285,16 +315,36 @@ async function main() {
       .limit(1)
   )[0];
   if (!haveProduct) {
-    await db.insert(schema.products).values({
+    const [product] = await db.insert(schema.products).values({
       tenantId: tenant.id,
+      categoryId: sampleCategory.id,
       productCode: "SKU-001",
+      sku: "SERUM-50-001",
       name: "Hair Serum 50ml",
-      shortDescription: "Demo product so the UI has a row.",
+      slug: "hair-serum-50ml",
+      shortDescription: "Demo product so the UI has a realistic catalog row.",
+      longDescription:
+        "Lightweight daily serum for dry or weak hair. Suitable for home use and salon retail recommendations.",
       productType: "physical",
       status: "active",
       unitOfMeasure: "bottle",
       defaultPrice: "49.00",
+      compareAtPrice: "59.00",
       currency: "MYR",
+      brand: "Demo Company",
+      aiSellingNotes:
+        "Best for customers asking about daily scalp care, lightweight texture, and salon-recommended maintenance.",
+      aiFaqNotes:
+        "Do not claim medical hair-growth results. Mention external use only and advise patch testing for sensitive users.",
+      tags: ["haircare", "retail", "demo"],
+    }).returning({ id: schema.products.id });
+    await db.insert(schema.productMedia).values({
+      tenantId: tenant.id,
+      productId: product.id,
+      mediaType: "image",
+      url: "https://images.unsplash.com/photo-1527799820374-dcf8d9d4a388?auto=format&fit=crop&w=900&q=80",
+      altText: "Hair serum product bottle on a clean background",
+      sortOrder: 0,
     });
     console.log("  ✓ created sample product SKU-001");
   } else {

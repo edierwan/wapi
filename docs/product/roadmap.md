@@ -27,7 +27,8 @@ Everything after is post-MVP.
 	- contact tags CRUD + per-contact toggle
 	- Business Brain CRUD (`business_memory_items`) on `/t/{slug}/brain`
 	- AI Readiness card on the tenant overview with components, recommendations, and `Recompute & save` action
-	- minimal product / service create flow on `/t/{slug}/products` and `/t/{slug}/services`
+	- guided product master editor on `/t/{slug}/products`
+	- minimal service create flow on `/t/{slug}/services`
 - Phase 5 remaining work for later tranches: CSV import, MinIO media uploads, full wizard steps 3–7
 - Phase 6 contract-ready WAPI surface is shipped (gateway client wrapper, HMAC-verified webhook receivers, `whatsapp_sessions` lifecycle, owner/admin connect UI, outbound worker skeleton, Dify provider resolution, secret resolver, Dify client, tenant-scoped context assembly, manual HITL draft action). Live gateway behavior is still gated on [Request 05](../request/05-wa-gateway-multitenancy.md).
 - Phase 7 functional tranche is shipped on 2026-04-28, including the remaining slice: composer, variant editor, consent-aware safety review, follow-up sequence UI, queue-backed dispatcher, reply-first runtime gating, per-account warm-up/rate-limit support, long-running follow-up executor, Dify HITL variant suggestion, and campaign KPIs.
@@ -111,7 +112,7 @@ Already shipped in this phase:
 Still pending to complete the functional Phase 5 tranche:
 
 - CSV import, bulk tagging, opt-out workflows (`opt_outs`)
-- Product / service editor follow-through: variants, packages, availability, media (MinIO `storage_objects`)
+- Product / service editor follow-through: product variants, service packages, service availability, MinIO-backed media uploads
 - Wizard steps 3–7: WhatsApp · products/services · business memory · campaign goal · AI first-campaign draft
 - richer AI Readiness signals (gateway connection, opt-in coverage, send history)
 
@@ -120,7 +121,7 @@ Shipped in tranche 1 of the functional Phase 5 work:
 - contacts UI (list + create + edit + delete, tag CRUD, per-contact toggle)
 - Business Brain UI (CRUD on `business_memory_items`)
 - AI Readiness card on the tenant overview, with `Recompute & save` action persisting to `ai_readiness_scores`
-- minimal product/service create flow
+- guided product master editor plus minimal service create flow
 
 ## Phase 6 — WhatsApp gateway integration + send test message ◐
 

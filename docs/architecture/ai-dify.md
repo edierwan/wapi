@@ -69,6 +69,7 @@ These are the sources the AI layer should read before calling Dify:
 - `tenant_settings`
 - `tenant_business_profiles`
 - `products`, `services`, and related catalog tables
+  - especially `products.short_description`, `products.long_description`, `products.ai_selling_notes`, `products.ai_faq_notes`, category data, and price rows
 - `business_memory_items`
 - later: campaign history, consent signals, inbound conversation summaries
 
@@ -187,7 +188,8 @@ Recommended flow:
 3. WAPI resolves the provider config.
 4. WAPI loads tenant-scoped grounding inputs:
    - business profile
-   - products / services
+  - products / services
+  - product AI notes and FAQ notes when present
    - business_memory_items
    - optional recent conversation summary
 5. WAPI sends those inputs to Dify.
@@ -197,6 +199,14 @@ Recommended flow:
 
 This is safer than pushing all tenant knowledge into one shared Dify dataset
 too early.
+
+## Product master grounding rule
+
+The product master is now designed to be one of the most important AI grounding sources.
+
+- AI may quote a product price only when the product record exists and has a stored price.
+- AI should prefer product descriptions and stored AI notes before creating new marketing language.
+- When product facts are incomplete, AI should ask for clarification or route to a human instead of inventing missing details.
 
 ## Dify specifics
 

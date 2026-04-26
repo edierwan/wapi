@@ -37,7 +37,7 @@ deeper schema.
 | B. Auth & Security | Users, sessions, roles, permissions, audit | 2, deepen 8 | [auth.md](./auth.md), [security.md](./security.md) |
 | C. WhatsApp Accounts | Connected numbers + Baileys sessions | 3, deepen 5 | [whatsapp-gateway.md](./whatsapp-gateway.md) |
 | D. Contacts / CRM | Contacts, lists, tags, opt-outs, lead status | 4 | [master-data.md](./master-data.md#contacts-crm) |
-| E. Product master | ERP-lite product catalog | 3 schema, 4 UI | [master-data.md](./master-data.md#product-master) |
+| E. Product master | ERP-lite product catalog with AI-ready fields and future channel sync support | 3 schema, 5 guided UI | [product-master-data.md](./product-master-data.md) |
 | F. Service master | Appointment/package/subscription services | 3 schema, 4 UI | [master-data.md](./master-data.md#service-master) |
 | G. Campaigns | Header/item campaign model | 6 | — (Phase 6) |
 | H. Inbox | Thread/message/event model + realtime | 7 | [realtime.md](./realtime.md) |
