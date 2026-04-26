@@ -1,4 +1,3 @@
-import "server-only";
 import { and, asc, eq, gte, lte, sql } from "drizzle-orm";
 import { requireDb, schema } from "@/db/client";
 import { listSteps, getSequence } from "@/server/followups";
@@ -25,6 +24,9 @@ import { listSteps, getSequence } from "@/server/followups";
  * always have those (tenant via `contacts.tenant_id`, phone via
  * `contacts.phone_e164` already in E.164 form). No phone is used as a
  * conversation key here.
+ *
+ * This module is used by the standalone Phase 8b worker script, so it
+ * cannot rely on the Next.js `server-only` runtime guard.
  */
 
 export type EnrollmentResult = {

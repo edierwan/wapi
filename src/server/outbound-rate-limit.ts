@@ -1,4 +1,3 @@
-import "server-only";
 import { and, eq, gte, sql } from "drizzle-orm";
 import { requireDb, schema } from "@/db/client";
 
@@ -20,6 +19,9 @@ import { requireDb, schema } from "@/db/client";
  * either add their own account-equivalent table and call a sibling
  * helper, or this helper grows a `channel` parameter. The shape of the
  * return value stays the same.
+ *
+ * This module is shared by the standalone outbound worker, so it must
+ * stay runnable outside the Next.js server-component runtime.
  */
 
 export type RateBudget = {

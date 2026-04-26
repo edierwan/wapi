@@ -86,6 +86,13 @@ const accountActionSchema = z.object({
  *
  * If the gateway is not configured, we still flip the WAPI-side row to
  * `pending`/`connecting` so the UI can show the right state.
+ *
+ * Error handling: live multi-tenant gateway behavior is gated by
+ * Request 05. Until that lands, the gateway can be reachable but reply
+ * with a non-2xx — we record the failure on the local session row as
+ * `error` and surface it through the page badge instead of throwing.
+ * Throwing here turned into a visible Next.js application-error
+ * overlay for tenant operators on `/t/{slug}/whatsapp` (defect A).
  */
 export async function connectSessionAction(formData: FormData) {
   const parsed = accountActionSchema.safeParse(
@@ -108,8 +115,15 @@ export async function connectSessionAction(formData: FormData) {
       label: acc.displayName,
     });
     if (!result.ok) {
+      // Do NOT throw. The gateway may not yet be multi-tenant aware
+      // (Request 05). The page must keep rendering and the operator
+      // must see the failure as a session badge, not a crash.
+      console.error(
+        `[whatsapp.connect] gateway error for account=${acc.id} tenant=${ctx.tenant.id}: ${result.error}`,
+      );
       await setSessionStatus({ accountId: acc.id, status: "error" });
-      throw new Error(`Gateway: ${result.error}`);
+      revalidatePath(`/t/${parsed.data.tenantSlug}/whatsapp`);
+      return;
     }
     await setSessionStatus({ accountId: acc.id, status: "connecting" });
   }
@@ -132,7 +146,13 @@ export async function resetSessionAction(formData: FormData) {
       gatewayUrl: acc.gatewayUrl,
     });
     if (!result.ok) {
-      throw new Error(`Gateway: ${result.error}`);
+      // Same posture as connect: surface via session row, not a crash.
+      console.error(
+        `[whatsapp.reset] gateway error for account=${acc.id} tenant=${ctx.tenant.id}: ${result.error}`,
+      );
+      await setSessionStatus({ accountId: acc.id, status: "error" });
+      revalidatePath(`/t/${parsed.data.tenantSlug}/whatsapp`);
+      return;
     }
   }
   await setSessionStatus({
