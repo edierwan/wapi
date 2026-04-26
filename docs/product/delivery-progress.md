@@ -1,6 +1,6 @@
 # WAPI Delivery Progress
 
-Last updated: 2026-04-27
+Last updated: 2026-04-28
 
 ## Current status
 
@@ -12,6 +12,7 @@ Last updated: 2026-04-27
 - **Phase 5 tenant UI tranche 1 is shipped** (contacts, Business Brain, AI Readiness card, minimal product/service create).
 - **Phase 6 contract-ready WAPI surface is shipped** alongside the **Dify runtime foundation** (provider resolution, secret resolver, Dify client, tenant-scoped context assembly, manual HITL draft action). Live gateway behavior remains gated on Request 05.
 - The Dify multi-tenant architecture plan is now updated to reflect actual shipped schema versus missing runtime integration.
+- Omnichannel expansion has been reviewed as a later roadmap track; current shipped transport integration remains WhatsApp-first and should not be mistaken for the final channel model.
 
 ## Admin page status
 
@@ -110,18 +111,22 @@ Both `wapi.dev` and `wapi` currently report:
   - `src/server/dify-client.ts` — `chatCompletion` wrapper for `POST /v1/chat-messages`; `buildConversationKey` enforces `tenant:<id>:hitl:<userId>` / `tenant:<id>:contact:<id>` and refuses bare phones
   - `src/server/ai-context.ts` — tenant-scoped context assembly from `tenant_business_profiles`, `products`, `services`, `business_memory_items`, contact stats; produces `inputs` envelope with `tenant_id` always present
   - `/t/[tenantSlug]/ai/draft/{page,actions,draft-reply-form}.tsx` — manual HITL draft assistant; never persists, never auto-replies
-- No current query surfaces are shipped yet for:
-  - `campaigns`
-  - `campaign_variants`
-  - `campaign_safety_reviews`
-  - `campaign_recipients`
-  - `followup_sequences`
+- Phase 7 functional tranche shipped (tranche 3, 2026-04-28):
+  - `src/server/campaigns.ts` — tenant-scoped CRUD; audience preview filtered by tags + lead status + status; recipients materialization that honors the `(campaignId, contactId)` unique index; status transitions `draft → safety_review → scheduled → sending → completed/cancelled/failed`.
+  - `src/server/campaign-safety.ts` — internal safety rule engine (length, prohibited words from `tenant_business_profiles.prohibited_words`, opt-out hint, all-caps shout) producing one-line summary + findings; `recordSafetyReview` persists snapshot.
+  - `src/server/campaign-dispatcher.ts` — inserts `message_queue` rows with `purpose='campaign'` and links them back to `campaign_recipients.queueId`. Never invents a parallel queue. Skips inactive contacts as `excluded`.
+  - `src/server/followups.ts` — sequence + steps CRUD, tenant-scoped via parent sequence.
+  - tenant pages `/t/[slug]/campaigns`, `/t/[slug]/campaigns/[id]`, `/t/[slug]/followups`, `/t/[slug]/followups/[id]`.
+  - status webhook now mirrors lifecycle into `campaign_recipients` via `queue_id` (still tenant-guarded by the existing webhook check).
+  - Campaigns nav entry de-`soon`-ed.
+  - Channel-agnostic where reasonable: campaigns do not encode WhatsApp specifics. Channel selection is implicit via the chosen account; future channels would add their own account-equivalent table without changing the campaigns API. The `message_queue` table already supports `purpose` and `payload`, so future channel rows do not need a parallel queue.
 
 Interpretation:
 
 - Phase 6 contract-ready WAPI side is now functional (HMAC verify, session lifecycle, owner/admin UI, Dify resolution + HITL draft).
 - Live WhatsApp gateway behavior (real QR + real send + real status webhooks) still depends on Request 05.
 - Phase 7 schema is landed; functional tranche still pending.
+- The next real product tranche should not rebuild shipped Phase 6 foundations; it should validate them, then move into Phase 7 and omnichannel-safe planning.
 
 ## Test-script result summary
 
@@ -176,18 +181,30 @@ Not completed in this pass (needs interactive verification — see `docs/request
 
 ### 10 — Phase 7
 
-Schema verified.
+Schema verified. Functional tranche shipped (tranche 3).
 
-Verified:
+Verified (automated):
 
 - all six Phase 7 tables exist on both DBs
-- no app query/UI surfaces are shipped yet, which matches current schema-only status
+- new tenant routes register in the build:
+  - `/t/[tenantSlug]/campaigns`
+  - `/t/[tenantSlug]/campaigns/[campaignId]`
+  - `/t/[tenantSlug]/followups`
+  - `/t/[tenantSlug]/followups/[sequenceId]`
+- every server function in `campaigns.ts`, `campaign-safety.ts`,
+  `campaign-dispatcher.ts`, and `followups.ts` filters by `tenant_id`
+  (variants/steps go through their tenant-scoped parent)
+- `campaign-dispatcher.ts` inserts into the existing `message_queue` with
+  `purpose='campaign'`; it does not create a parallel queue
+- status webhook mirrors lifecycle into `campaign_recipients`
+- `pnpm typecheck` and `pnpm build` pass after the tranche
 
-Not completed in this pass:
+Not completed in this pass (needs interactive verification — see
+`docs/request/14-test-phase7-campaigns.md`):
 
-- manual campaign insert and cleanup smoke flow
-- safety-review status exercise in DB
-- follow-up sequence uniqueness smoke
+- end-to-end browser pass for composer / safety review / schedule
+- cross-tenant URL probe for campaign and sequence detail
+- worker dry-run with a campaign-queued row, then status-webhook replay
 
 ### 11 — Admin console shell
 
@@ -208,6 +225,49 @@ Not completed in this pass:
 - non-admin signed-in redirect to `/access-denied?reason=admin`
 - mobile/narrow viewport visual check
 
+## Interactive validation status (this round)
+
+The interactive checks listed below remain owned by the human tester. Each
+request doc is now in one of three states:
+
+- **automated-verifiable parts: confirmed by Coder AI** in the current
+  build (typecheck, build, route registration, server-side guard logic,
+  signature verification, cross-tenant guards, conversation-key invariants).
+- **interactive parts: pending tester pass** (browser sessions, live curl
+  webhook calls, live Dify call with a real `DIFY_DEFAULT_API_KEY`, mobile
+  viewport check, super-admin happy-path).
+- **out of scope here**: anything blocked by Request 05 stays explicitly
+  blocked.
+
+### Test 08 — Phase 5 tenant UI tranche 1
+
+- Automated-verifiable: confirmed (build/typecheck pass; routes registered;
+  every server module filters by `tenant_id`).
+- Interactive: pending tester pass for contact CRUD + tag toggle, Business
+  Brain CRUD, `Recompute & save`, product/service create form, and
+  hidden-field tamper.
+- No real defects found in this round; Phase 5 tranche 1 stays shipped.
+
+### Test 13 — Phase 6 contract-ready
+
+- Automated-verifiable: confirmed. HMAC verify is timing-safe; cross-tenant
+  guards (`status` webhook + Dify provider resolver) are in place;
+  `wa-gateway.ts` is `server-only`; `isValidConversationKey` rejects bare
+  phones; `assembleTenantContext` filters every query by `tenant_id`.
+- Interactive: pending tester pass for the connect/reset/disconnect flow,
+  curl-driven webhook signature exercise, live Dify call with a real key,
+  outbound-worker dry-run.
+- No real defects found in this round; Phase 6 contract-ready stays shipped.
+
+### Test 11 — Admin console shell
+
+- Automated-verifiable: confirmed. All 11 admin routes register; layout
+  RBAC gate is server-side via `system.admin.access`.
+- Interactive: pending tester pass for super-admin happy path and tile
+  click-through. Placeholder `Coming soon` modules are expected and are
+  NOT regressions.
+- No real defects found in this round.
+
 ## Blockers and limits in this pass
 
 - I do not have the current super-admin password in this conversation, so I could not complete the signed-in admin browser checks from Test 11.
@@ -222,7 +282,8 @@ Not completed in this pass:
 Still blocked externally.
 
 - WAPI Phase 6 schema is ready to receive gateway integration.
-- WAPI app-side integration work is still pending.
+- WAPI contract-ready app-side integration is shipped.
+- The remaining blocker is live external gateway behavior: real QR, real send, and real session-scoped webhook traffic.
 - The gateway itself is still the controlling external dependency for session-scoped WhatsApp readiness.
 
 ## Recommended next tranche for Coder AI
@@ -236,20 +297,11 @@ Workspace prompt prepared for the next round:
 
 ### Immediate next actions
 
-1. Complete the remaining WAPI-interactive checks for Test 08 and Test 11.
-2. Do not treat Test 09 and Test 10 as missing UI regressions yet; they are schema-only at the current WAPI stage.
-3. Keep Request 05 as an external blocker, but continue the WAPI-side integration tranche now.
-4. Add WAPI-side delivery items for:
-   - gateway client wrapper
-   - webhook receivers
-   - outbound queue worker
-   - `/t/{slug}/whatsapp` connect / QR / reset / disconnect UI
-5. In the same next tranche, add the first WAPI Dify runtime foundation for multi-tenant-safe AI:
-  - provider resolution via `tenant_ai_settings` and `ai_provider_configs`
-  - `api_key_ref` secret resolution
-  - minimal Dify client wrapper
-  - tenant-scoped grounding from Business Brain + profile + catalog
-  - one narrow human-in-the-loop AI surface before any inbound auto-reply behavior
+1. Complete the remaining interactive checks for Test 08, Test 09 contract-ready, and Test 11.
+2. Start the functional Phase 7 tranche instead of redoing shipped Phase 6 or Dify foundation work.
+3. Add omnichannel planning updates for Facebook, Instagram, Shopee, Lazada, and TikTok without forcing immediate implementation.
+4. Keep Request 05 as the external blocker for live WhatsApp behavior.
+5. Preserve the current Dify multi-tenant guardrails while Phase 7 and inbox planning expand.
 6. Keep this file updated as the live progress ledger.
 
 ### Planning guardrail for the next round
@@ -261,10 +313,10 @@ Coder AI should split the next work into two choices instead of mixing them:
 
 Recommended priority:
 
-1. interactive validation and defect close-out for shipped Phase 5 tranche 1
-2. Phase 6 WAPI-side gateway integration
-3. multi-tenant-safe Dify runtime foundation in WAPI
-4. Phase 7 campaign UI and worker behavior
+1. interactive validation and defect close-out for shipped Phase 5 and Phase 6 contract-ready work
+2. Phase 7 campaign UI and worker behavior
+3. omnichannel architecture and roadmap prep for future inbox/channel expansion
+4. release hardening and blocker tracking
 5. only then full admin modules unless business priorities change
 
 ### Specific corrections to prior planning
@@ -274,9 +326,10 @@ Recommended priority:
 3. Phase 6 and Phase 7 in WAPI are currently schema-foundation state, not missing-UI regressions.
 4. WAPI release-readiness should be separated from later roadmap tranches like full admin modules and campaign UI.
 5. The current admin screenshot should be treated as a pass for the shell state, not evidence that the shell failed.
-6. Dify in WAPI is schema-and-architecture ready, but runtime integration is still pending.
+6. Dify in WAPI is no longer only schema-and-architecture ready; the first runtime foundation is now shipped.
 7. Shared Dify is acceptable for MVP only if WAPI remains the tenancy boundary and tenant context is resolved in WAPI first.
 8. Tenant-dedicated Dify is a later upgrade path, not the first implementation target.
+9. Omnichannel support is not part of MVP, but future inbox/campaign work should avoid hard-coding WhatsApp-only assumptions into shared abstractions.
 
 ## Suggested plan enhancement
 

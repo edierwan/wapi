@@ -62,6 +62,13 @@ Read these files first before planning or changing code:
 - `message_queue` schema is landed
 - `inbound_messages` schema is landed
 - OTP still uses the gateway path
+- Phase 6 contract-ready WAPI surface is already shipped:
+   - gateway client wrapper
+   - HMAC-verified webhook receivers
+   - tenant-scoped session helpers
+   - owner/admin WhatsApp connect/reset/disconnect UI
+   - outbound worker skeleton
+   - first Dify runtime foundation
 
 ### Phase 7 foundation
 
@@ -77,23 +84,24 @@ Read these files first before planning or changing code:
 ### Do not misclassify these
 
 - Missing full admin modules is not a bug for the current stage.
-- Missing Phase 6 and 7 app query/UI surfaces is expected because those phases are at schema-foundation stage only.
+- Missing live gateway behavior is still expected while Request 05 remains externally blocked.
+- Missing Phase 7 app query/UI surfaces is expected because that phase is still at schema-foundation stage.
 
 ### Actual pending work
 
-- Phase 6 WAPI-side gateway integration
-- Dify multi-tenant runtime foundation
+- interactive validation for shipped Phase 5 and Phase 6 work
 - Phase 7 campaign UI and worker-driven behavior
+- omnichannel architecture prep for future inbox/channel rollout
 - release hardening and operational close-out
 
 ## Delivery priority for the next round
 
 Follow this order unless the user explicitly changes priority:
 
-1. Complete the remaining interactive validation for shipped Phase 5 tranche 1 where credentials or browser interaction are still needed.
-2. Implement the WAPI-side Phase 6 tranche.
-3. Implement the Dify multi-tenant runtime foundation in WAPI.
-4. Implement the functional Phase 7 tranche.
+1. Complete the remaining interactive validation for shipped Phase 5 and Phase 6 contract-ready work where credentials, browser interaction, or live secrets are still needed.
+2. Implement the functional Phase 7 tranche.
+3. Update architecture and plan docs so future inbox/campaign work can grow into Facebook, Instagram, Shopee, Lazada, and TikTok without redoing tenant or AI isolation.
+4. Keep release hardening and blocker tracking visible.
 5. Keep full admin modules for a later dedicated tranche.
 
 ## Required next tranche
@@ -115,71 +123,13 @@ Acceptance bar for Tranche 1:
 - shipped Phase 5 tranche 1 is either confirmed or any real defect is fixed
 - progress docs clearly separate automated versus interactive validation
 
-### Tranche 2 — WAPI-side Phase 6 integration + Dify foundation
+### Tranche 2 — functional Phase 7 + omnichannel-safe planning
 
 Do this after Tranche 1 validation unless the user explicitly reprioritizes.
 
 Goal:
 
-- make WAPI structurally ready to consume the future multi-session gateway contract and establish the first tenant-safe Dify runtime layer
-
-Deliverables:
-
-1. gateway client wrapper
-   - single server-side client module
-   - centralize URL, auth, shared-secret usage
-2. session-aware WAPI integration surface
-   - session status reads
-   - QR retrieval
-   - reset/disconnect primitives
-3. webhook receivers
-   - qr
-   - connected
-   - disconnected
-   - message.inbound
-   - message.status
-   - verify signatures server-side
-4. outbound queue worker
-   - drain `message_queue`
-   - update send state transitions
-5. tenant WhatsApp UI
-   - connect / QR / reset / disconnect state
-   - server actions only for secret-bearing operations
-6. Dify provider/runtime foundation
-   - provider resolution service using `tenant_ai_settings` and `ai_provider_configs`
-   - secret resolution by `api_key_ref`
-   - minimal Dify client wrapper
-   - tenant-scoped context assembly from WAPI data
-   - preserve WAPI as the tenancy boundary
-7. first AI-assisted surface
-   - one narrow manual flow only
-   - prefer Business Brain or tenant overview action over inbound auto-reply first
-   - human-in-the-loop only
-8. doc and progress updates
-
-Important constraint:
-
-- If Request 05 gateway behavior is still not delivered externally, implement only the WAPI-side contract-ready pieces that can be done safely without pretending end-to-end readiness exists.
-- Dify must be implemented as multi-tenant-safe from the first runtime slice.
-- Do not use a shared mixed-tenant dataset as the primary tenancy boundary.
-- Resolve tenant from WAPI records first, then call Dify with tenant-scoped context.
-- Do not use bare phone number as the sole conversation key.
-
-Acceptance bar for Tranche 2:
-
-- WAPI code structure is ready for multi-session gateway integration
-- no client exposure of gateway secret
-- queue and webhook flows are server-side
-- Dify provider resolution is tenant-aware
-- AI grounding uses only tenant-scoped WAPI data
-- shared Dify, if used, remains orchestration only and not the tenancy boundary
-- docs clearly state what is complete versus blocked by the external gateway
-
-### Tranche 3 — functional Phase 7
-
-Goal:
-
-- turn the campaign schema into real product behavior
+- turn the campaign schema into real tenant-facing behavior while preserving an upgrade path to omnichannel inbox and channel adapters
 
 Deliverables:
 
@@ -188,13 +138,26 @@ Deliverables:
 3. safety review presentation
 4. follow-up sequence UI
 5. tenant-scoped campaign query surfaces
-6. worker/state behavior only where realistic and grounded by the actual shipped queue model
+6. worker/state behavior only where realistic and grounded by the shipped queue model
+7. omnichannel-safe design updates in docs
+   - identify where inbox/campaign abstractions must stay channel-agnostic
+   - preserve WhatsApp-first runtime as the first adapter, not the final universal model
+   - note rollout intent for Facebook, Instagram, Shopee, Lazada, and TikTok
+8. doc and progress updates
 
-Acceptance bar for Tranche 3:
+Important constraint:
+
+- Do not re-open shipped Phase 6/Dify foundation code unless validation finds a real defect.
+- Preserve the existing Dify tenant-isolation rules while Phase 7 grows.
+- Do not let new inbox/campaign concepts assume WhatsApp-only identities or webhook payload shapes.
+- Marketplace channels such as Shopee, Lazada, and TikTok may require commerce-aware modeling beyond plain chat messages.
+
+Acceptance bar for Tranche 2:
 
 - campaign draft flow works
 - tenant isolation is explicit in query paths
 - docs and tests are updated to match shipped functionality
+- omnichannel direction is documented without pretending those connectors are already shipped
 
 ## Admin-module rule
 
@@ -225,6 +188,7 @@ As you work, maintain these delivery rules:
 4. Do not mark WAPI WhatsApp readiness green while Request 05 remains externally blocked.
 5. Preserve multi-tenant Dify isolation: WAPI resolves tenant ownership first; Dify does not.
 6. Treat tenant-dedicated Dify as a later upgrade path, not the first implementation.
+7. Keep future inbox/campaign abstractions compatible with later connectors for Facebook, Instagram, Shopee, Lazada, and TikTok.
 
 ## Required documentation updates after each tranche
 
@@ -261,6 +225,7 @@ When a feature is interactive and cannot be fully verified automatically:
 - pretending the external gateway blocker is already solved
 - treating Dify as a cross-tenant shared memory store
 - implementing tenant-dedicated Dify infrastructure before the shared-runtime tenant-safe layer exists
+- prematurely implementing full omnichannel connectors before the shared inbox model and channel abstractions are planned
 - large speculative refactors without user-facing delivery value
 
 ## Definition of success for the next round
