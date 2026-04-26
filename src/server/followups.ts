@@ -1,4 +1,3 @@
-import "server-only";
 import { and, asc, desc, eq } from "drizzle-orm";
 import { requireDb, schema } from "@/db/client";
 
@@ -12,6 +11,8 @@ import { requireDb, schema } from "@/db/client";
  *
  * Every read and write filters by `tenant_id`. Steps are tenant-checked
  * via their parent sequence.
+ *
+ * The same helpers are also reused by the standalone follow-up worker.
  */
 
 export type FollowupTrigger = "no_reply" | "hot_lead" | "new_contact" | "custom";

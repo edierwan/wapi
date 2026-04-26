@@ -1,4 +1,3 @@
-import "server-only";
 import { env } from "@/lib/env";
 
 /**
@@ -19,6 +18,9 @@ import { env } from "@/lib/env";
  *
  * NOTE: NEVER import this module from a Client Component. The shared
  * secret must never reach the browser.
+ *
+ * We intentionally avoid `import "server-only"` here because this
+ * module is also used by standalone Node worker scripts in Phase 8b.
  */
 
 export type GatewayResult<T> =
