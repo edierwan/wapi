@@ -833,15 +833,19 @@ contact-less conversations, and truncates previews`).
 
 ### Request 05 — gateway multi-tenancy
 
-Still blocked externally — gateway refactor round in progress.
+Partially unblocked — gateway refactor shipped on the gateway side; live two-number test still pending.
 
-- Gateway refactor round started. WAPI-side is not being patched further unless a contract mismatch is found. The target is `getouch.co/services/wa/server.mjs` multi-session refactor.
-- Implementation tracking lives in [docs/request/05-wa-gateway-multitenancy.md](../request/05-wa-gateway-multitenancy.md) under the `2026-04-26 Gateway Implementation Attempt` section.
-- WAPI Phase 6 schema is ready to receive gateway integration.
-- WAPI contract-ready app-side integration is shipped.
-- The remaining blocker is live external gateway behavior: real QR, real send, and real session-scoped webhook traffic.
-- Local gateway audit on 2026-04-26 reconfirmed the root cause: `getouch.co/services/wa/server.mjs` still uses one global Baileys socket plus one shared auth directory, with no `/api/sessions/*` runtime.
-- The gateway itself is still the controlling external dependency for session-scoped WhatsApp readiness.
+- Gateway refactor round complete on `getouch.co/services/wa`. WAPI-side is not being patched further unless a contract mismatch is found.
+- New gateway runtime: `services/wa/session-manager.mjs` + `services/wa/webhook-dispatcher.mjs` + refactored `services/wa/server.mjs`.
+- Module-scoped `let sock = null` and the shared auth directory are gone. `SessionManager` owns a `Map<sessionId, SessionRuntime>`; each runtime owns its own Baileys socket, auth directory under `${SESSIONS_DIR}/${sessionId}`, status, QR cache, paired phone, reconnect timer, last error, message counters, and recent-event ring buffer.
+- New routes: `POST /api/sessions/:id`, `GET /api/sessions/:id/status`, `GET /api/sessions/:id/qr`, `POST /api/sessions/:id/reset`, `DELETE /api/sessions/:id`, `POST /api/sessions/:id/messages`, `GET /api/sessions`, `GET /api/webhook-stats`, plus `/sessions/...` aliases. All require `X-WAPI-Secret`.
+- Legacy `/api/status`, `/api/qr-code`, `/api/pairing-code`, `/api/send-text`, `/api/send-image`, `/api/send-document`, `/api/logout`, `/api/reset` still work; they are pinned to `DEFAULT_SESSION_ID` via SessionManager and surface `deprecated: true` in their responses.
+- Admin UI now renders a multi-tenant sessions table (status, phone, last seen, msgs 24h, QR view, reset, delete) with summary chips and 5s auto-refresh; the existing single-session card stays as the default-session view.
+- Outbound webhook dispatcher delivers `qr`, `connected`, `disconnected`, `message.inbound`, `message.status`, `session.deleted` to `WAPI_WEBHOOK_URL` with HMAC-SHA256 of the raw body in `X-WA-Signature`. Retry is in-memory exponential backoff (5s → 1h cap, drop after 24h); persistent disk-backed retry is documented as pending.
+- Local validation against a fresh `SESSIONS_DIR=/tmp/wa-test-sessions`: 401 with no/wrong `X-WAPI-Secret`, two sessions A and B isolated, reset A keeps B, delete A keeps B, legacy `/api/status` runs through `DEFAULT_SESSION_ID`, path-traversal probe returns 400. Full results recorded in [docs/request/05-wa-gateway-multitenancy.md](../request/05-wa-gateway-multitenancy.md).
+- Live concurrent two-number WhatsApp test is still pending (only one real test number available).
+- Compose: existing persistent volume `/data/getouch/wa:/app/data` is preserved. `SESSIONS_DIR` defaults to `/app/data/sessions` and the legacy `/app/data/auth` content auto-migrates into `/app/data/sessions/default` on first boot, so the current pairing is not lost.
+- WAPI Phase 6 schema is ready to receive gateway integration; WAPI contract-ready app-side integration is shipped; the remaining external dependency is the live concurrent multi-tenant verification on `wa.getouch.co` after Coolify deploy.
 
 ## Recommended next tranche for Coder AI
 
