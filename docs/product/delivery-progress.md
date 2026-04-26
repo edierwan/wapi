@@ -24,7 +24,7 @@ Last updated: 2026-04-26 (admin tranche shipped, deployed, and smoke-tested)
 - The Dify multi-tenant architecture plan is now updated to reflect actual shipped schema versus missing runtime integration.
 - Omnichannel expansion has been reviewed as a later roadmap track; current shipped transport integration remains WhatsApp-first and should not be mistaken for the final channel model.
 - Local Phase 8b worker runtime defect fixed: standalone worker scripts no longer die on `Cannot find module 'server-only'` before the supervisor can run.
-- Tenant workspace navigation now exposes a visible sign-out control for authenticated users.
+- Authenticated navigation now exposes a visible sign-out control on marketing, dashboard, and tenant headers, including normal laptop-width layouts.
 - `/admin/users` is now the first real test-ops admin module: global directory, tenant-membership visibility, system-role visibility, and guarded delete-user cleanup for repeated test cycles.
 - Request 05 was re-audited against the local gateway source. `getouch.co/services/wa/server.mjs` still runs one module-scoped socket and one shared auth directory, so true multi-tenant WhatsApp runtime remains blocked at the gateway layer.
 

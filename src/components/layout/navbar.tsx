@@ -8,6 +8,7 @@ import { Logo } from "@/components/layout/logo";
 import { nav } from "@/config/marketing";
 import { cn } from "@/lib/utils";
 import { ThemeToggle } from "@/components/theme-toggle";
+import { signOutAction } from "@/app/login/actions";
 
 export type NavbarUser = { email: string; name: string | null } | null;
 
@@ -39,16 +40,21 @@ export function Navbar({
           </nav>
         )}
 
-        <div className="hidden items-center gap-3 md:flex">
+        <div className="hidden shrink-0 items-center gap-2 md:flex">
           <ThemeToggle />
           {user ? (
             <>
-              <span className="hidden text-xs text-[var(--muted-foreground)] lg:inline">
+              <span className="hidden max-w-[11rem] truncate text-xs text-[var(--muted-foreground)] 2xl:inline">
                 {user.email}
               </span>
               <Button asChild variant="ghost" size="sm">
                 <Link href="/dashboard">Dashboard</Link>
               </Button>
+              <form action={signOutAction}>
+                <Button type="submit" variant="outline" size="sm">
+                  Sign out
+                </Button>
+              </form>
             </>
           ) : (
             <>
@@ -90,12 +96,24 @@ export function Navbar({
                 {item.label}
               </Link>
             ))}
+          {user ? (
+            <p className="mt-2 px-1 text-xs text-[var(--muted-foreground)]">
+              Signed in as {user.email}
+            </p>
+          ) : null}
           <div className="mt-2 flex items-center gap-2">
             <ThemeToggle />
             {user ? (
-              <Button asChild size="sm" className="flex-1">
-                <Link href="/dashboard">Dashboard</Link>
-              </Button>
+              <>
+                <Button asChild size="sm" className="flex-1">
+                  <Link href="/dashboard">Dashboard</Link>
+                </Button>
+                <form action={signOutAction} className="flex-1">
+                  <Button type="submit" variant="outline" size="sm" className="w-full">
+                    Sign out
+                  </Button>
+                </form>
+              </>
             ) : (
               <>
                 <Button asChild variant="outline" size="sm" className="flex-1">
