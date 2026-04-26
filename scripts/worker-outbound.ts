@@ -1,8 +1,11 @@
 /**
- * Outbound message worker (skeleton — NOT YET RUNNING IN PRODUCTION).
+ * Outbound message worker.
  *
- * Run manually:
- *   pnpm tsx scripts/worker-outbound.ts
+ * Run modes (Phase 8b):
+ *   pnpm worker:outbound           # one-shot tick (default)
+ *   WAPI_WORKER_MODE=loop pnpm worker:outbound
+ *                                  # supervised loop with heartbeat
+ *   pnpm worker:outbound:loop      # convenience for the above
  *
  * Loop responsibilities:
  *   1. SELECT message_queue rows where status='queued' AND scheduled_at <= now()
@@ -21,15 +24,16 @@
  *   - We NEVER read or write rows for a different tenant than the row owns.
  *   - We do NOT mutate connected_accounts or whatsapp_sessions here.
  *
- * This file is intentionally not wired into a long-running process yet.
- * The live operator (Phase 6 live behavior) is gated by Request 05
- * (gateway multi-tenancy) and Phase 7 (campaign/safety controls).
+ * Live-send is still gated by Request 05 (gateway multi-tenancy). Until
+ * that lands, ticks no-op against an empty queue and the heartbeat is
+ * still useful for ops visibility.
  */
 
 import { and, eq, lte, sql } from "drizzle-orm";
 import { getDb, schema } from "@/db/client";
 import { sendText } from "@/server/wa-gateway";
 import { checkAndReserve } from "@/server/outbound-rate-limit";
+import { runSupervised } from "@/server/worker-supervisor";
 
 const BATCH_SIZE = 10;
 
@@ -168,24 +172,37 @@ async function dispatchOne(row: Row) {
   // On success: leave status='sending'. Status webhook will advance it.
 }
 
-async function main() {
+async function tick() {
   const rows = await claimBatch();
   if (rows.length === 0) {
     console.log("[worker-outbound] nothing to do");
-    return;
+    return { counts: { claimed: 0, dispatched: 0, errored: 0 } };
   }
   console.log(`[worker-outbound] dispatching ${rows.length} message(s)`);
+  let errored = 0;
   for (const row of rows) {
     try {
       await dispatchOne(row);
     } catch (err) {
+      errored += 1;
       console.error(`[worker-outbound] row ${row.id} failed:`, err);
     }
   }
+  return { counts: { claimed: rows.length, dispatched: rows.length - errored, errored } };
 }
 
 if (require.main === module) {
-  main().then(
+  const runMode = process.env.WAPI_WORKER_MODE === "loop" ? "loop" : "once";
+  const intervalMs = Number.parseInt(
+    process.env.WAPI_WORKER_INTERVAL_MS ?? "15000",
+    10,
+  );
+  runSupervised({
+    name: "outbound",
+    tick,
+    runMode,
+    intervalMs: Number.isFinite(intervalMs) && intervalMs > 0 ? intervalMs : 15_000,
+  }).then(
     () => process.exit(0),
     (err) => {
       console.error(err);

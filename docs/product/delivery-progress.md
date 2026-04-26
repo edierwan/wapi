@@ -1,6 +1,6 @@
 # WAPI Delivery Progress
 
-Last updated: 2026-04-26 (Phase 8a shared inbox)
+Last updated: 2026-04-26 (Phase 8b worker supervision + system-health hook)
 
 ## Primary delivery ledger
 
@@ -410,6 +410,13 @@ Read-only first slice — composing / replying lands in a later slice.
 
 ### Tests run after delivery
 
+- `pnpm test:unit` — pass; focused Node tests now cover the pure inbox
+  merge logic (`src/server/inbox-core.test.ts`):
+  - tenant + normalized-phone identity is preserved
+  - inbound wins when inbound/outbound timestamps tie
+  - contact-less conversations still render in the aggregate shape
+  - previews truncate to 160 chars
+  - merged timeline events stay newest-first with `channel='whatsapp'`
 - `pnpm typecheck` — pass.
 - `pnpm build` — pass; new routes register:
   - `/t/[tenantSlug]/inbox`
@@ -427,6 +434,15 @@ Read-only first slice — composing / replying lands in a later slice.
     "Not linked to a contact yet".
   - Conversation key never falls back to `whatsapp_sessions`.
 
+### Additional automated coverage added after delivery
+
+- `src/server/inbox-core.ts` extracts the read-model merge logic into a
+  pure helper module so Phase 8a invariants can be tested without a DB.
+- `src/server/inbox-core.test.ts` adds focused unit coverage for the
+  Smart Customer Memory seam: `(tenant_id, normalized_phone_number)`
+  remains the stable identity anchor, with channel kept as a literal
+  string rather than derived from session state.
+
 ### Pending interactive checks (Phase 8a)
 
 - Browser pass for the list view (sort order, counters, `+N new` chip).
@@ -443,6 +459,122 @@ Read-only first slice — composing / replying lands in a later slice.
 - AI summary or rolling conversation memory (Phase 8c).
 - Cross-channel rollouts (Facebook / Instagram / Shopee / Lazada /
   TikTok).
+
+## Phase 8b — supervised worker run mode + system-health data hook (2026-04-26)
+
+Scope: real, minimal supervised-run path for the existing worker
+scripts plus a server-side admin system-health snapshot. No queue-model
+redesign, no fake multi-channel worker, no schema churn.
+
+### Delivered
+
+- `src/server/worker-supervisor-core.ts` — pure helpers:
+  `WorkerHeartbeat`, `WorkerStatus`, `parseHeartbeat`,
+  `classifyHeartbeat` (state ∈ ok/stale/missing/errored),
+  `buildHeartbeat`, `formatAge`, `DEFAULT_STALE_AFTER_MS=120000`.
+  No filesystem, no DB — fully unit-testable.
+- `src/server/worker-supervisor.ts` — `runSupervised()` /
+  `runOnce()` / `readAllHeartbeats()`. One-shot mode preserves the
+  existing exit-code contract; loop mode handles SIGINT/SIGTERM
+  cleanly, writes a heartbeat per tick, and never crashes the loop on
+  a tick-level error (the error is recorded in the heartbeat instead).
+  Heartbeat directory is `WAPI_WORKER_HEARTBEAT_DIR` or
+  `${os.tmpdir()}/wapi-workers`.
+- `scripts/worker-outbound.ts` and `scripts/follow-up-executor.ts`
+  refactored to `tick()` functions wrapped by `runSupervised()`.
+  Existing tenant-scoped logic, rate-limit reservation, and
+  account/tenant-mismatch guards are unchanged.
+- `package.json` adds `worker:outbound:loop` and
+  `worker:followups:loop` (one-shot scripts kept as the defaults to
+  preserve current cron / Coolify-scheduled-command behavior).
+- `src/server/system-health.ts` — `getSystemHealthSnapshot()`:
+  - reads heartbeats for the expected workers (`outbound`,
+    `follow-ups`)
+  - reads aggregate queue signals from `message_queue` (queued,
+    sending, failed-24h, oldest-queued age) in a single SQL pass
+  - tolerates missing DB / missing heartbeat dir without throwing
+- `src/app/admin/system-health/page.tsx` — real server-component page
+  replacing the placeholder. Renders worker status badges
+  (OK/STALE/MISSING/ERRORED), heartbeat metadata, an error callout when
+  any worker reported a recent error, and the queue-signals card.
+- `src/app/admin/_nav.ts` — `system-health` flipped from `placeholder`
+  to `ready`. All other admin modules remain `placeholder`.
+- `docs/request/16-test-phase8b-worker-supervision.md` — manual test
+  plan (one-shot run, supervised loop, error-visibility flow, admin
+  page, tenant isolation invariant, Smart Customer Memory code-audit).
+- `src/server/worker-supervisor-core.test.ts` — focused unit coverage
+  for the pure logic.
+
+### Run modes (operator-facing)
+
+- `pnpm worker:outbound` — one-shot tick (default; cron-friendly).
+- `pnpm worker:outbound:loop` — supervised loop, default 15s tick.
+- `pnpm worker:followups` — one-shot tick (default; cron-friendly).
+- `pnpm worker:followups:loop` — supervised loop, default 60s tick.
+- Override via `WAPI_WORKER_MODE=loop` and
+  `WAPI_WORKER_INTERVAL_MS=<ms>`.
+- Override heartbeat location via `WAPI_WORKER_HEARTBEAT_DIR`.
+- Recommended deployment shape: a Coolify scheduled command (one-shot)
+  every minute, or a long-running loop process supervised by systemd /
+  Coolify-managed-service. WAPI does not bundle a process supervisor;
+  the supervised-loop wrapper just keeps heartbeats and signals
+  trustworthy.
+
+### Tests run after delivery
+
+- `pnpm test:unit` — pass (11 + 4 = **22 total**, 11 new for
+  `worker-supervisor-core` plus the existing inbox-core suite).
+- `pnpm typecheck` — pass.
+- `pnpm build` — pass; new/updated routes register:
+  - `/admin/system-health` (now real, not placeholder)
+  - `/t/[tenantSlug]/inbox` and `/t/[tenantSlug]/inbox/[phone]`
+    unchanged from Phase 8a.
+- Live deploy health: `wapi-dev.getouch.co` → `200`,
+  `wapi.getouch.co` → `200`.
+- Narrowest behavior code audit:
+  - `runSupervised` writes a heartbeat on success **and** on tick
+    error; loop ticks never propagate the error to the process exit.
+  - `runOnce` re-throws after writing a heartbeat so cron / scheduled
+    commands still surface non-zero exit codes.
+  - SIGINT and SIGTERM both flip a single `stopRequested` flag and let
+    the current tick finish; sleep is interruptible at 250ms steps.
+  - Heartbeat write is `tmp + rename` to avoid torn reads.
+  - `classifyHeartbeat` is pure: `now` is an explicit argument so tests
+    do not need to fake the clock.
+  - `getSystemHealthSnapshot` never throws; missing DB → zeroed signals
+    and `dbAvailable=false`; missing heartbeat dir → `missing` rows.
+  - `/admin/system-health` is layout-gated by `system.admin.access`;
+    the page renders no tenant-specific data.
+
+### Pending interactive checks (Phase 8b)
+
+- Run `pnpm worker:outbound:loop` locally and watch the heartbeat file
+  tick; SIGINT and confirm clean shutdown.
+- Run with broken `DATABASE_URL` and confirm `lastError` populated and
+  `totalErrors` increments in the heartbeat.
+- Sign in as `SYSTEM_SUPER_ADMIN`, visit `/admin/system-health`, and
+  confirm worker rows + queue card render the live data the script
+  produced.
+
+### Known local-env note (not a Phase 8b regression)
+
+- Running the worker scripts on a clean checkout without
+  `node_modules` resolved by Next will fail with
+  `Cannot find module 'server-only'` in code paths that import server
+  modules. This is the same `.env.local` / install-state class the
+  existing ledger already documents for `pnpm db:seed`. The
+  one-shot/loop wrappers themselves are correct; the code path is
+  validated by typecheck, build, and unit tests.
+
+### Phase 8b out of scope (not regressions)
+
+- Replacing `message_queue` with a different queue model.
+- A multi-channel worker abstraction (other channels reuse the
+  supervisor wrapper as-is when they ship).
+- A bundled production process supervisor (operator's choice: systemd /
+  Coolify scheduled command / Coolify managed service / nohup).
+- Live multi-tenant WhatsApp send (Request 05).
+- Smart Customer Memory writes (Phase 8c).
 
 ## Blockers and limits in this pass
 
@@ -523,24 +655,23 @@ After this round we have shipped:
 - Phase 7 remaining slice (consent / reply-first / rate limit /
   follow-up executor / AI variant HITL / KPIs)
 - Release-hardening pass
-- Phase 8a — shared inbox view (this round)
+- Phase 8a — shared inbox view
+- Phase 8b — supervised worker run mode + system-health data hook
+  (this round)
 
 Remaining cycles needed to close MVP+1:
 
-1. **Cycle N+1**: Phase 8b — supervised worker run mode + system-health
-   data hook.
-2. **Cycle N+2**: Phase 8c — Smart Customer Memory schema seed and
+1. **Cycle N+1**: Phase 8c — Smart Customer Memory schema seed and
    read-only writes from inbound/outbound events.
-3. **Cycle N+3**: full admin-module tranche (turn `Coming soon` cards
+2. **Cycle N+2**: full admin-module tranche (turn `Coming soon` cards
    into the first three real modules: Tenants, Users, AI).
-4. **Cycle N+4** (buffer): release hardening, billing groundwork,
+3. **Cycle N+3** (buffer): release hardening, billing groundwork,
    omnichannel architecture finalization.
 
-That leaves us at **4 remaining cycles**, which fits inside the
-"fewer than 6 from here" budget if Request 05 unblocks before
-N+1 lands. If Request 05 slips, cycle N+1 may need to absorb a
-gateway-integration validation tranche (still inside the 6-cycle
-budget).
+That leaves us at **3 remaining cycles**, comfortably inside the
+"fewer than 6 from here" budget. If Request 05 lands externally before
+N+1, no extra cycle is needed; if it slips, gateway-integration
+validation can fold into N+3 without breaking the budget.
 
 ### Planning guardrail for the next round
 

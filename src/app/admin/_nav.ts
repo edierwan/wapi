@@ -92,7 +92,7 @@ export const ADMIN_NAV: AdminNavItem[] = [
     label: "System Health",
     icon: Activity,
     description: "DB, gateway, worker, realtime.",
-    status: "placeholder",
+    status: "ready",
   },
   {
     href: "/admin/abuse",

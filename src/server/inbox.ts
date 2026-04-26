@@ -1,6 +1,12 @@
 import "server-only";
 import { and, desc, eq, sql } from "drizzle-orm";
 import { requireDb, schema } from "@/db/client";
+import {
+  mergeConversationSummaries,
+  mergeTimelineEvents,
+  type ConversationSummary,
+  type TimelineEvent,
+} from "@/server/inbox-core";
 
 /**
  * Phase 8a — Shared inbox read model.
@@ -31,47 +37,7 @@ import { requireDb, schema } from "@/db/client";
  *   - we never reach into `whatsapp_sessions` to derive identity.
  */
 
-export type ConversationSummary = {
-  tenantId: string;
-  /** E.164-normalized identity anchor. Always tenant co-keyed. */
-  normalizedPhone: string;
-  /** Canonical channel string. Single channel today. */
-  channel: "whatsapp";
-  /** Joined contact info if a contact exists for this phone. */
-  contactId: string | null;
-  contactName: string | null;
-  contactStatus: string | null;
-  contactLeadStatus: string | null;
-  /** Latest activity across inbound + outbound. */
-  lastActivityAt: Date;
-  /** Most recent message preview (first 160 chars). */
-  lastMessagePreview: string | null;
-  /** Direction of the most recent message. */
-  lastDirection: "inbound" | "outbound";
-  /** Total inbound + outbound counts for this conversation. */
-  inboundCount: number;
-  outboundCount: number;
-  /**
-   * Inbound messages received after the latest outbound. A weak proxy
-   * for "unread" until a real read-marker model lands.
-   */
-  awaitingReplyCount: number;
-};
-
-export type TimelineEvent = {
-  id: string;
-  direction: "inbound" | "outbound";
-  channel: "whatsapp";
-  occurredAt: Date;
-  bodyText: string | null;
-  status: string | null;
-  /** Provider message id from gateway, when present. */
-  providerMessageId: string | null;
-  /** For outbound: queue purpose (campaign / reply / otp / followup / ...). */
-  purpose: string | null;
-  /** For inbound: AI-classified intent if available. */
-  intent: string | null;
-};
+export type { ConversationSummary, TimelineEvent } from "@/server/inbox-core";
 
 /**
  * List all conversations for a tenant.
@@ -268,47 +234,15 @@ export async function listConversations(
   const contactByPhone = new Map<string, (typeof contactRows)[number]>();
   for (const c of contactRows) contactByPhone.set(c.phoneE164, c);
 
-  const result: ConversationSummary[] = [];
-  for (const b of byPhone.values()) {
-    const lastIn = lastInboundByPhone.get(b.phone);
-    const lastOut = lastOutboundByPhone.get(b.phone);
-    const lastActivityAt =
-      lastIn && lastOut
-        ? lastIn.at > lastOut.at
-          ? lastIn.at
-          : lastOut.at
-        : (lastIn?.at ?? lastOut?.at ?? new Date(0));
-    const lastDirection: "inbound" | "outbound" =
-      lastIn && lastOut
-        ? lastIn.at >= lastOut.at
-          ? "inbound"
-          : "outbound"
-        : lastIn
-          ? "inbound"
-          : "outbound";
-    const lastMessagePreview = (
-      lastDirection === "inbound" ? lastIn?.body : lastOut?.body
-    )?.slice(0, 160) ?? null;
-    const contact = contactByPhone.get(b.phone);
-    result.push({
-      tenantId,
-      normalizedPhone: b.phone,
-      channel: "whatsapp",
-      contactId: contact?.id ?? null,
-      contactName: contact?.fullName ?? null,
-      contactStatus: contact?.status ?? null,
-      contactLeadStatus: contact?.leadStatus ?? null,
-      lastActivityAt,
-      lastMessagePreview,
-      lastDirection,
-      inboundCount: b.inboundCount,
-      outboundCount: b.outboundCount,
-      awaitingReplyCount: awaitingByPhone.get(b.phone) ?? 0,
-    });
-  }
-
-  result.sort((a, b) => b.lastActivityAt.getTime() - a.lastActivityAt.getTime());
-  return result.slice(0, limit);
+  return mergeConversationSummaries({
+    tenantId,
+    buckets: byPhone.values(),
+    lastInboundByPhone,
+    lastOutboundByPhone,
+    awaitingByPhone,
+    contactByPhone,
+    limit,
+  });
 }
 
 /**
@@ -381,31 +315,23 @@ export async function getConversationTimeline(
     )
     .limit(limit);
 
-  const events: TimelineEvent[] = [
-    ...inbound.map((r) => ({
+  return mergeTimelineEvents({
+    inbound: inbound.map((r) => ({
       id: r.id,
-      direction: "inbound" as const,
-      channel: "whatsapp" as const,
-      occurredAt: new Date(r.receivedAt),
       bodyText: r.bodyText ?? null,
-      status: null,
+      receivedAt: new Date(r.receivedAt),
       providerMessageId: r.providerMessageId ?? null,
-      purpose: null,
       intent: r.intent ?? null,
     })),
-    ...outbound.map((r) => ({
+    outbound: outbound.map((r) => ({
       id: r.id,
-      direction: "outbound" as const,
-      channel: "whatsapp" as const,
-      occurredAt: new Date(r.sentAt ?? r.createdAt),
       bodyText: r.bodyText ?? null,
+      sentAt: r.sentAt ? new Date(r.sentAt) : null,
+      createdAt: new Date(r.createdAt),
       status: r.status,
       providerMessageId: r.providerMessageId ?? null,
       purpose: r.purpose,
-      intent: null,
     })),
-  ];
-
-  events.sort((a, b) => b.occurredAt.getTime() - a.occurredAt.getTime());
-  return events.slice(0, limit);
+    limit,
+  });
 }
