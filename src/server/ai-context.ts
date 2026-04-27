@@ -203,6 +203,7 @@ export function contextToDifyInputs(
 ): Record<string, unknown> {
   return {
     tenant_id: ctx.tenantId,
+    tenant_slug: ctx.tenantSlug,
     tenant_name: ctx.tenantName,
     tone: ctx.tone ?? "friendly",
     language: ctx.language ?? "en",

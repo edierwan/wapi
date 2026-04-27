@@ -78,6 +78,12 @@ export function DraftReplyForm({ tenantSlug }: { tenantSlug: string }) {
                 provider: <code>{state.meta.providerName}</code> · key:{" "}
                 <code>{state.meta.conversationKey}</code> ·{" "}
                 {state.meta.latencyMs} ms
+                {state.meta.difyDatasetId
+                  ? ` · dataset: ${state.meta.difyDatasetId}`
+                  : ""}
+                {state.meta.knowledgeStatus
+                  ? ` · knowledge: ${state.meta.knowledgeStatus}`
+                  : ""}
               </div>
             ) : null}
             <p className="text-xs text-[var(--muted-foreground)]">

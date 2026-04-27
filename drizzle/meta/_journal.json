@@ -36,6 +36,20 @@
       "when": 1777219202712,
       "tag": "0004_breezy_scarecrow",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1777225017628,
+      "tag": "0005_kind_maggott",
+      "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1777248558546,
+      "tag": "0006_bizarre_sebastian_shaw",
+      "breakpoints": true
     }
   ]
 }

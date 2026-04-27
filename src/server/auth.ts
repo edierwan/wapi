@@ -19,6 +19,7 @@ import { eq } from "drizzle-orm";
 import crypto from "node:crypto";
 import { requireDb } from "@/db/client";
 import { sessions, users, type User } from "@/db/schema";
+import { findUserByIdentifier } from "@/server/user-identifiers";
 
 const COOKIE_NAME = "wapi_session";
 const SESSION_TTL_MS = 30 * 24 * 60 * 60 * 1000; // 30 days
@@ -115,29 +116,31 @@ export async function signInWithEmail(input: {
 }
 
 export async function signInWithPassword(input: {
-  email: string;
+  identifier: string;
   password: string;
 }): Promise<User> {
   const { verifyPassword } = await import("./password");
-  const email = input.email.trim().toLowerCase();
-  if (!email || !input.password) throw new Error("Email and password required.");
+  const identifier = input.identifier.trim();
+  if (!identifier || !input.password) {
+    throw new Error("Email/phone and password required.");
+  }
 
   const db = requireDb();
-  const rows = await db
-    .select()
-    .from(users)
-    .where(eq(users.email, email))
-    .limit(1);
-  const user = rows[0];
-  if (!user) throw new Error("Invalid email or password.");
+  const user = await findUserByIdentifier(identifier);
+  if (!user) throw new Error("Invalid email/phone or password.");
   if (user.status && user.status !== "active")
     throw new Error("This account is disabled.");
 
   const ok = await verifyPassword(input.password, user.passwordHash ?? null);
-  if (!ok) throw new Error("Invalid email or password.");
+  if (!ok) throw new Error("Invalid email/phone or password.");
 
   await issueSessionForUser(user.id);
   return user;
+}
+
+export async function invalidateSessionsForUser(userId: string): Promise<void> {
+  const db = requireDb();
+  await db.delete(sessions).where(eq(sessions.userId, userId));
 }
 
 /** Creates a session row + sets the signed cookie for a user. Internal helper. */

@@ -22,6 +22,7 @@ import {
 } from "./otp";
 import { deriveSlugCandidate, isValidPhoneE164, normalisePhone } from "@/lib/phone";
 import { RESERVED_SLUGS } from "@/lib/slug";
+import { normaliseMalaysiaPhone } from "@/server/auth-identifiers";
 
 const OTP_EXPIRES_MIN = Number(process.env.OTP_EXPIRES_MINUTES || 10);
 const OTP_RESEND_COOLDOWN_S = Number(process.env.OTP_RESEND_COOLDOWN_SECONDS || 60);
@@ -79,8 +80,9 @@ export async function startRegistration(
   if (password !== input.confirmPassword)
     return { ok: false, error: "Passwords do not match.", field: "confirmPassword" };
 
-  const phone = normalisePhone(
-    (input.phoneCountryCode || "+60") + (input.phoneNumber || ""),
+  const phone = normaliseRegistrationPhone(
+    input.phoneCountryCode || "+60",
+    input.phoneNumber || "",
   );
   if (!isValidPhoneE164(phone))
     return { ok: false, error: "Phone number looks invalid.", field: "phoneNumber" };
@@ -358,3 +360,9 @@ async function resolveAvailableSlug(
 }
 
 export type { PendingRegistration, User };
+
+function normaliseRegistrationPhone(countryCode: string, localNumber: string): string {
+  const ccDigits = (countryCode || "+60").replace(/\D+/g, "");
+  const localDigits = (localNumber || "").replace(/\D+/g, "").replace(/^0+/, "");
+  return normalisePhone(`+${ccDigits}${localDigits}`) || normaliseMalaysiaPhone(`+${ccDigits}${localDigits}`);
+}
