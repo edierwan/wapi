@@ -10,7 +10,8 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { TenantSubNav } from "@/components/tenant/sub-nav";
+import { getTenantPageSectionLabel } from "@/components/tenant/tenant-nav-items";
+import { TenantPage, TenantPageHeader } from "@/components/tenant/tenant-page";
 import { requireTenantContext } from "@/server/tenant-guard";
 import { getDb, schema } from "@/db/client";
 import { isGatewayConfigured } from "@/server/wa-gateway";
@@ -56,24 +57,15 @@ export default async function WhatsAppAccountsPage({
   const gatewayReady = isGatewayConfigured();
 
   return (
-    <section className="mx-auto max-w-6xl px-4 py-12 sm:px-6 lg:px-8">
-      <TenantSubNav slug={ctx.tenant.slug} active="WhatsApp" />
-
-      <div className="mb-6 flex flex-wrap items-start justify-between gap-3">
-        <div>
-          <h1 className="text-2xl font-semibold tracking-tight">WhatsApp accounts</h1>
-          <p className="mt-1 text-sm text-[var(--muted-foreground)]">
-            Each row is one WhatsApp number = one Baileys session on{" "}
-            <code className="text-xs">
-              {env.WA_GATEWAY_URL || env.WA_GATEWAY_DEFAULT_URL || "wa.getouch.co"}
-            </code>
-            .
-          </p>
-        </div>
-      </div>
+    <TenantPage>
+      <TenantPageHeader
+        sectionLabel={getTenantPageSectionLabel("WhatsApp")}
+        title="WhatsApp"
+        description={`Each row is one WhatsApp number = one Baileys session on ${env.WA_GATEWAY_URL || env.WA_GATEWAY_DEFAULT_URL || "wa.getouch.co"}.`}
+      />
 
       {canWrite ? (
-        <Card className="mb-6">
+        <Card>
           <CardHeader>
             <CardTitle className="text-base">Add a WhatsApp number</CardTitle>
             <CardDescription>
@@ -194,6 +186,6 @@ export default async function WhatsAppAccountsPage({
           })}
         </div>
       )}
-    </section>
+    </TenantPage>
   );
 }

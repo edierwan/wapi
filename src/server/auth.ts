@@ -15,6 +15,7 @@
 
 import "server-only";
 import { cookies, headers } from "next/headers";
+import { redirect } from "next/navigation";
 import { eq } from "drizzle-orm";
 import crypto from "node:crypto";
 import { requireDb } from "@/db/client";
@@ -76,6 +77,12 @@ export async function getCurrentUser(): Promise<User | null> {
   if (!rec) return null;
   if (rec.expiresAt.getTime() < Date.now()) return null;
   return rec.user;
+}
+
+export async function requireCurrentUser(next = "/login"): Promise<User> {
+  const user = await getCurrentUser();
+  if (!user) redirect(next);
+  return user;
 }
 
 export async function signInWithEmail(input: {

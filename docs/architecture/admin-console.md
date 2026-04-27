@@ -40,7 +40,7 @@ Modeled as rows in a `system_roles` table (separate from tenant
 | `/admin/audit` | audit | Filter audit logs across tenants |
 | `/admin/webhooks` | webhooks | Webhook delivery log, retry failed |
 | `/admin/system-health` | health | DB, Redis, MinIO, Dify, Baileys gateway up/down + latency |
-| `/admin/storage` | storage | Bucket health, per-tenant prefix init, DB usage; backed by SeaweedFS shared infra |
+| `/admin/storage` | storage | Storage backend view: provider health, tenant prefixes, init status, DB usage |
 | `/admin/abuse` | risk | Flag spammy tenants, mass opt-out spikes, suspect numbers |
 
 ## User cascade delete (development test cleanup)

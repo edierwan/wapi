@@ -1,6 +1,6 @@
 import "server-only";
 import { redirect } from "next/navigation";
-import { getCurrentUser } from "@/server/auth";
+import { requireCurrentUser } from "@/server/auth";
 import { resolveTenantBySlug, type TenantContext } from "@/server/tenant";
 
 /**
@@ -11,8 +11,7 @@ import { resolveTenantBySlug, type TenantContext } from "@/server/tenant";
 export async function requireTenantContext(
   tenantSlug: string,
 ): Promise<TenantContext> {
-  const me = await getCurrentUser();
-  if (!me) redirect("/login");
+  const me = await requireCurrentUser("/login");
 
   const res = await resolveTenantBySlug({
     slug: tenantSlug,

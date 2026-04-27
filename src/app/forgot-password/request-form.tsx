@@ -21,7 +21,7 @@ export function ForgotPasswordForm() {
     <form action={action} className="mt-6 space-y-4">
       <div>
         <label htmlFor="identifier" className="text-sm font-medium">
-          Email or phone number
+          Email or Phone
         </label>
         <input
           id="identifier"
@@ -31,9 +31,12 @@ export function ForgotPasswordForm() {
           autoComplete="username"
           value={identifier}
           onChange={(event) => setIdentifier(event.target.value)}
-          placeholder="you@company.com or 60123456789"
+          placeholder="Enter your email or phone"
           className="mt-1.5 block h-10 w-full rounded-md border border-[var(--input)] bg-[var(--background)] px-3 text-sm outline-none placeholder:text-[var(--muted-foreground)]/70 focus:ring-2 focus:ring-[var(--ring)]"
         />
+        <p className="mt-1.5 text-xs text-[var(--muted-foreground)]">
+          Use your registered email or phone number.
+        </p>
       </div>
 
       {state.error ? (

@@ -4,16 +4,15 @@ import { ArrowRight, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { getCurrentUser } from "@/server/auth";
+import { requireCurrentUser } from "@/server/auth";
 import { listUserTenants } from "@/server/tenant";
 import { userHasSystemPermission } from "@/server/permissions";
-import { signOutAction } from "@/app/login/actions";
+import { SignOutButton } from "@/components/auth/sign-out-button";
 
 export const dynamic = "force-dynamic";
 
 export default async function DashboardPage() {
-  const user = await getCurrentUser();
-  if (!user) redirect("/login");
+  const user = await requireCurrentUser("/login");
 
   // System admins go to /admin (they have no normal tenant flow).
   if (await userHasSystemPermission(user.id, "system.admin.access").catch(() => false)) {
@@ -42,11 +41,7 @@ export default async function DashboardPage() {
           </p>
         </div>
 
-        <form action={signOutAction}>
-          <Button type="submit" variant="ghost" size="sm">
-            Sign out
-          </Button>
-        </form>
+        <SignOutButton variant="ghost" size="sm" />
       </div>
 
       <div className="mt-10 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">

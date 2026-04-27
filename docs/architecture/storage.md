@@ -85,12 +85,20 @@ storage.
 
 ## Admin and tenant UI
 
-- `/admin/storage` (system admins only): lists all tenants, their prefix,
-  DB row count + size from `storage_objects`, and live S3 init status from
-  `_meta/storage.json`. Renders a "not configured" banner when env is unset.
-- `/t/{tenantSlug}/settings/storage` (tenant members): bucket name, the
-  tenant's own prefix, init status, the whitelisted category list, and a
-  privacy/deletion summary. No raw secrets are rendered anywhere.
+- `/admin/storage` (system admins only): technical backend view for provider
+  status, bucket health, per-tenant prefix layout, DB row count + size from
+  `storage_objects`, and live S3 init status from `_meta/storage.json`.
+  Renders a "not configured" banner when env is unset.
+- `/t/{tenantSlug}/settings/storage` (tenant members): business-facing
+  "Files & Media" view with friendly storage summary cards, readable
+  categories, upload placeholders, recent files, and simple privacy wording.
+  Tenant users must not see provider names, bucket names, tenant UUID
+  prefixes, or raw internal object paths.
+
+Internally, tenant files are still isolated by `tenants/{tenantId}/...`
+prefixes and the provider remains swappable (SeaweedFS today, MinIO / S3 / R2
+later). That implementation detail belongs in admin and architecture docs, not
+in the normal tenant workspace UI.
 
 ## Schema: `storage_objects`
 

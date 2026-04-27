@@ -9,7 +9,8 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { TenantSubNav } from "@/components/tenant/sub-nav";
+import { getTenantPageSectionLabel } from "@/components/tenant/tenant-nav-items";
+import { TenantPage, TenantPageHeader } from "@/components/tenant/tenant-page";
 import { requireTenantContext } from "@/server/tenant-guard";
 import { listCampaigns } from "@/server/campaigns";
 import { createCampaignAction } from "./actions";
@@ -27,25 +28,20 @@ export default async function CampaignsPage({
   const canWrite = ["owner", "admin"].includes(ctx.currentUserRole ?? "");
 
   return (
-    <section className="mx-auto max-w-6xl px-4 py-12 sm:px-6 lg:px-8">
-      <TenantSubNav slug={ctx.tenant.slug} active="Campaigns" />
-
-      <div className="mb-6 flex flex-wrap items-end justify-between gap-3">
-        <div>
-          <h1 className="text-2xl font-semibold tracking-tight">Campaigns</h1>
-          <p className="mt-1 text-sm text-[var(--muted-foreground)]">
-            Plan a message, draft variants, run safety review, then schedule. Sends
-            go through the same outbound queue as everything else, with consent
-            and tenant rules enforced.
-          </p>
-        </div>
-        <Link
-          href={`/t/${ctx.tenant.slug}/followups`}
-          className="text-xs underline"
-        >
-          Follow-up sequences →
-        </Link>
-      </div>
+    <TenantPage>
+      <TenantPageHeader
+        sectionLabel={getTenantPageSectionLabel("Campaigns")}
+        title="Campaigns"
+        description="Plan a message, draft variants, run safety review, then schedule. Sends go through the same outbound queue as everything else, with consent and tenant rules enforced."
+        actions={
+          <Link
+            href={`/t/${ctx.tenant.slug}/followups`}
+            className="text-xs underline underline-offset-2"
+          >
+            Follow-up sequences →
+          </Link>
+        }
+      />
 
       <div className="grid gap-6 lg:grid-cols-[2fr_1fr]">
         <Card>
@@ -161,6 +157,6 @@ export default async function CampaignsPage({
           </Card>
         )}
       </div>
-    </section>
+    </TenantPage>
   );
 }

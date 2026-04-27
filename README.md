@@ -163,6 +163,21 @@ Coolify uses Nixpacks. The repo is compatible as-is.
 See [docs/deployment/coolify.md](docs/deployment/coolify.md) and
 [docs/deployment/wildcard-ssl.md](docs/deployment/wildcard-ssl.md).
 
+### SSH access reference
+
+Internal server access currently uses the shared deploy account below.
+
+```bash
+ssh deploy@100.84.14.93
+```
+
+- User: `deploy`
+- Host: `100.84.14.93`
+- Password: `Turun@2020`
+
+Use this only for internal WAPI deployment and operator tasks. Rotate the
+credential if repository access broadens.
+
 ---
 
 ## 9. Multi-tenant strategy (summary)

@@ -107,7 +107,7 @@ export const TENANT_NAV_SECTIONS: TenantNavSection[] = [
       },
       {
         key: "Storage",
-        label: "Storage",
+        label: "Files & Media",
         path: "/settings/storage",
         Icon: Database,
       },
@@ -152,4 +152,18 @@ export function isTenantNavItemActive(
   }
 
   return false;
+}
+
+export function getTenantPageSectionLabel(
+  itemKey: string,
+  titleOverride?: string,
+): string {
+  for (const section of TENANT_NAV_SECTIONS) {
+    const item = section.items.find((entry) => entry.key === itemKey);
+    if (item) {
+      return `${section.label} | ${titleOverride ?? item.label}`;
+    }
+  }
+
+  return titleOverride ?? itemKey;
 }

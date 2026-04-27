@@ -10,7 +10,13 @@ import {
   isTenantNavItemActive,
 } from "./tenant-nav-items";
 
-export function TenantSidebar({ slug }: { slug: string }) {
+export function TenantSidebar({
+  slug,
+  displayName,
+}: {
+  slug: string;
+  displayName?: string;
+}) {
   const pathname = usePathname() ?? "";
   const [open, setOpen] = useState(false);
 
@@ -53,7 +59,7 @@ export function TenantSidebar({ slug }: { slug: string }) {
               Workspace
             </p>
             <p className="truncate text-sm font-medium text-[var(--foreground)]">
-              /t/{slug}
+              {displayName?.trim() || slug}
             </p>
           </div>
 

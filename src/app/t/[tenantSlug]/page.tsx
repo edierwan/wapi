@@ -18,7 +18,8 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { TenantSubNav } from "@/components/tenant/sub-nav";
+import { getTenantPageSectionLabel } from "@/components/tenant/tenant-nav-items";
+import { TenantPage, TenantPageHeader } from "@/components/tenant/tenant-page";
 import { ReadinessCard } from "@/components/tenant/readiness-card";
 import { requireTenantContext } from "@/server/tenant-guard";
 import { isOnboardingComplete } from "@/server/business-profile";
@@ -95,20 +96,18 @@ export default async function TenantWorkspacePage({
   ];
 
   return (
-    <section className="mx-auto max-w-7xl px-4 py-12 sm:px-6 lg:px-8">
-      <TenantSubNav slug={tenant.slug} active="Overview" />
-
-      <div className="flex flex-wrap items-start justify-between gap-4">
-        <div>
-          <div className="mb-3 flex items-center gap-2 text-xs text-[var(--muted-foreground)]">
-            <Link href="/dashboard" className="hover:text-[var(--foreground)]">
-              Workspaces
-            </Link>
-            <span>/</span>
-            <span className="font-mono">/t/{tenant.slug}</span>
-          </div>
-          <h1 className="text-3xl font-semibold tracking-tight">{tenant.name}</h1>
-          <div className="mt-2 flex flex-wrap items-center gap-2 text-sm text-[var(--muted-foreground)]">
+    <TenantPage>
+      <TenantPageHeader
+        sectionLabel={getTenantPageSectionLabel("Overview")}
+        title={tenant.name}
+        description="Overview of your workspace readiness, channels, and next steps."
+        actions={
+          <Button asChild variant="outline" size="sm">
+            <Link href="/dashboard">Switch workspace</Link>
+          </Button>
+        }
+        meta={
+          <>
             <Badge className="uppercase">{tenant.status}</Badge>
             <span>·</span>
             <span>
@@ -117,20 +116,17 @@ export default async function TenantWorkspacePage({
                 {currentUserRole}
               </span>
             </span>
-            {tenant.plan && (
+            {tenant.plan ? (
               <>
                 <span>·</span>
                 <span>Plan: {tenant.plan}</span>
               </>
-            )}
-          </div>
-        </div>
-        <Button asChild variant="outline" size="sm">
-          <Link href="/dashboard">Switch workspace</Link>
-        </Button>
-      </div>
+            ) : null}
+          </>
+        }
+      />
 
-      <div className="mt-10">
+      <div>
         <ReadinessCard
           tenantId={tenant.id}
           tenantSlug={tenant.slug}
@@ -138,7 +134,7 @@ export default async function TenantWorkspacePage({
         />
       </div>
 
-      <div className="mt-10 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
         {tiles.map((t) => {
           const Icon = t.Icon;
           const card = (
@@ -166,6 +162,6 @@ export default async function TenantWorkspacePage({
           );
         })}
       </div>
-    </section>
+    </TenantPage>
   );
 }

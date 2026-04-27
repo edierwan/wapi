@@ -9,7 +9,8 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { TenantSubNav } from "@/components/tenant/sub-nav";
+import { getTenantPageSectionLabel } from "@/components/tenant/tenant-nav-items";
+import { TenantPage, TenantPageHeader } from "@/components/tenant/tenant-page";
 import { requireTenantContext } from "@/server/tenant-guard";
 import { getDb, schema } from "@/db/client";
 import { createServiceAction } from "../_catalog-actions";
@@ -45,18 +46,14 @@ export default async function ServicesPage({
   const canWrite = ["owner", "admin"].includes(ctx.currentUserRole ?? "");
 
   return (
-    <section className="mx-auto max-w-6xl px-4 py-12 sm:px-6 lg:px-8">
-      <TenantSubNav slug={ctx.tenant.slug} active="Services" />
+    <TenantPage>
+      <TenantPageHeader
+        sectionLabel={getTenantPageSectionLabel("Services")}
+        title="Services"
+        description="Appointments, consultations, repairs, subscription packages. Each row can carry duration and booking requirements."
+      />
 
-      <div className="mb-6">
-        <h1 className="text-2xl font-semibold tracking-tight">Services</h1>
-        <p className="mt-1 text-sm text-[var(--muted-foreground)]">
-          Appointments, consultations, repairs, subscription packages.
-          Each row can carry duration and booking requirements.
-        </p>
-      </div>
-
-      <Card className="mb-8">
+      <Card>
         <CardHeader>
           <CardTitle className="text-base">Add service</CardTitle>
           <CardDescription>
@@ -217,6 +214,6 @@ export default async function ServicesPage({
           </table>
         </div>
       )}
-    </section>
+    </TenantPage>
   );
 }

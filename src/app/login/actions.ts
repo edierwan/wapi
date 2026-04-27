@@ -47,5 +47,5 @@ export async function signInAction(
 
 export async function signOutAction() {
   await authSignOut();
-  redirect("/login");
+  return { ok: true } as const;
 }

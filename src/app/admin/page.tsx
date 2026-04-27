@@ -7,7 +7,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { getCurrentUser } from "@/server/auth";
+import { requireCurrentUser } from "@/server/auth";
 import { getUserSystemRoleCodes } from "@/server/permissions";
 import { ADMIN_NAV } from "./_nav";
 
@@ -23,7 +23,7 @@ export const dynamic = "force-dynamic";
  * the two views never drift.
  */
 export default async function AdminOverviewPage() {
-  const me = (await getCurrentUser())!;
+  const me = await requireCurrentUser("/login");
   const codes = await getUserSystemRoleCodes(me.id);
 
   // Skip the "Overview" entry — that's the page we're on.

@@ -97,7 +97,7 @@ export const ADMIN_NAV: AdminNavItem[] = [
     href: "/admin/storage",
     label: "Object Storage",
     icon: HardDrive,
-    description: "Tenant prefixes, bucket usage, init status (SeaweedFS).",
+    description: "Backend provider, tenant prefixes, and storage health.",
     status: "ready",
   },
   {

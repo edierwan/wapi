@@ -8,7 +8,7 @@ import { Logo } from "@/components/layout/logo";
 import { nav } from "@/config/marketing";
 import { cn } from "@/lib/utils";
 import { ThemeToggle } from "@/components/theme-toggle";
-import { signOutAction } from "@/app/login/actions";
+import { SignOutButton } from "@/components/auth/sign-out-button";
 
 export type NavbarUser = { email: string; name: string | null } | null;
 
@@ -50,11 +50,7 @@ export function Navbar({
               <Button asChild variant="ghost" size="sm">
                 <Link href="/dashboard">Dashboard</Link>
               </Button>
-              <form action={signOutAction}>
-                <Button type="submit" variant="outline" size="sm">
-                  Sign out
-                </Button>
-              </form>
+              <SignOutButton variant="outline" size="sm" />
             </>
           ) : (
             <>
@@ -108,11 +104,7 @@ export function Navbar({
                 <Button asChild size="sm" className="flex-1">
                   <Link href="/dashboard">Dashboard</Link>
                 </Button>
-                <form action={signOutAction} className="flex-1">
-                  <Button type="submit" variant="outline" size="sm" className="w-full">
-                    Sign out
-                  </Button>
-                </form>
+                <SignOutButton variant="outline" size="sm" className="w-full flex-1" />
               </>
             ) : (
               <>

@@ -43,7 +43,7 @@ export function RegisterForm() {
         name="email"
         label="Email"
         type="email"
-        placeholder="you@company.com"
+        placeholder="Enter your email"
         defaultValue={values.email}
         required
         autoComplete="email"
@@ -70,7 +70,7 @@ export function RegisterForm() {
         <Field
           name="phoneNumber"
           label="WhatsApp number"
-          placeholder="123456789"
+          placeholder="Enter your phone number"
           defaultValue={values.phoneNumber}
           inputMode="numeric"
           required

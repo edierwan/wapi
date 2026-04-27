@@ -9,7 +9,8 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { TenantSubNav } from "@/components/tenant/sub-nav";
+import { getTenantPageSectionLabel } from "@/components/tenant/tenant-nav-items";
+import { TenantPage, TenantPageHeader } from "@/components/tenant/tenant-page";
 import { requireTenantContext } from "@/server/tenant-guard";
 import { listContacts, listTags } from "@/server/contacts";
 import {
@@ -44,20 +45,14 @@ export default async function ContactsPage({
   );
 
   return (
-    <section className="mx-auto max-w-6xl px-4 py-12 sm:px-6 lg:px-8">
-      <TenantSubNav slug={ctx.tenant.slug} active="Contacts" />
+    <TenantPage>
+      <TenantPageHeader
+        sectionLabel={getTenantPageSectionLabel("Contacts")}
+        title="Contacts"
+        description="People and businesses in your audience. AI uses these to send campaigns and follow-ups, always with consent rules respected."
+      />
 
-      <div className="mb-6 flex flex-wrap items-start justify-between gap-3">
-        <div>
-          <h1 className="text-2xl font-semibold tracking-tight">Contacts</h1>
-          <p className="mt-1 text-sm text-[var(--muted-foreground)]">
-            People and businesses in your audience. AI uses these to send
-            campaigns and follow-ups, always with consent rules respected.
-          </p>
-        </div>
-      </div>
-
-      <div className="mb-6 grid gap-6 lg:grid-cols-[2fr_1fr]">
+      <div className="grid gap-6 lg:grid-cols-[2fr_1fr]">
         {/* Search + create */}
         <Card>
           <CardHeader>
@@ -280,6 +275,6 @@ export default async function ContactsPage({
           </table>
         </div>
       )}
-    </section>
+    </TenantPage>
   );
 }
