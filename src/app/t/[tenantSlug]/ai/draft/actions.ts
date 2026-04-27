@@ -1,5 +1,6 @@
 "use server";
 
+import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { z } from "zod";
 import { getCurrentUser } from "@/server/auth";
@@ -13,6 +14,8 @@ import {
   buildConversationKey,
   chatCompletion,
 } from "@/server/dify-client";
+import { resolveTenantDifyDataset } from "@/server/tenant-dify";
+import { syncTenantKnowledgeToDify } from "@/server/tenant-dify-sync";
 
 const writeRoles = new Set(["owner", "admin", "agent"]);
 
@@ -34,8 +37,48 @@ export type DraftReplyState = {
     providerName: string;
     conversationKey: string;
     latencyMs: number;
+    difyDatasetId?: string;
+    knowledgeStatus?: string;
   };
 };
+
+const syncSchema = z.object({
+  tenantSlug: z.string(),
+});
+
+export async function syncTenantKnowledgeAction(formData: FormData) {
+  const parsed = syncSchema.safeParse(Object.fromEntries(formData.entries()));
+  if (!parsed.success) {
+    redirect("/dashboard");
+  }
+
+  const { ctx } = await authForWrite(parsed.data.tenantSlug);
+  const result = await syncTenantKnowledgeToDify(ctx.tenant.id);
+  const params = new URLSearchParams({
+    knowledgeSync: result.status,
+    knowledgeCount: String(result.documentCount),
+    knowledgeMessage: result.message,
+  });
+
+  revalidatePath(`/t/${parsed.data.tenantSlug}/ai/draft`);
+  redirect(`/t/${parsed.data.tenantSlug}/ai/draft?${params.toString()}`);
+}
+
+async function authForWrite(tenantSlug: string) {
+  const me = await getCurrentUser();
+  if (!me) redirect("/login");
+
+  const ctx = await resolveTenantBySlug({
+    slug: tenantSlug,
+    currentUserId: me.id,
+  });
+  if (!ctx.ok) redirect("/dashboard");
+  if (!writeRoles.has(ctx.currentUserRole ?? "")) {
+    redirect(`/t/${tenantSlug}/ai/draft`);
+  }
+
+  return { ctx, me };
+}
 
 /**
  * Manual HITL action: assemble tenant-scoped context, call the resolved
@@ -89,6 +132,7 @@ export async function draftReplyAction(
   }
 
   const tenantCtx = await assembleTenantContext(ctx.tenant.id);
+  const dataset = await resolveTenantDifyDataset(ctx.tenant.id);
   const conversationKey = buildConversationKey({
     tenantId: ctx.tenant.id,
     hitlUserId: me.id,
@@ -103,6 +147,8 @@ export async function draftReplyAction(
     inputs: contextToDifyInputs(tenantCtx, {
       task: data.task,
       latest_customer_message: data.customerMessage,
+      dify_dataset_id: dataset.datasetId ?? undefined,
+      dify_app_id: dataset.appId ?? undefined,
     }),
     responseMode: "blocking",
   });
@@ -122,6 +168,8 @@ export async function draftReplyAction(
       providerName: provider.name,
       conversationKey,
       latencyMs,
+      difyDatasetId: dataset.datasetId ?? undefined,
+      knowledgeStatus: dataset.syncStatus,
     },
   };
 }

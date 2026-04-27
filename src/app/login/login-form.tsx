@@ -1,46 +1,71 @@
 "use client";
 
-import { useActionState } from "react";
+import Link from "next/link";
+import { useActionState, useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
+import { PasswordInput } from "@/components/ui/password-input";
 import { signInAction, type LoginState } from "./actions";
 
 const initial: LoginState = { ok: false };
 
 export function LoginForm({ devEmailLogin }: { devEmailLogin: boolean }) {
   const [state, action, pending] = useActionState(signInAction, initial);
+  const [identifier, setIdentifier] = useState("");
+  const [password, setPassword] = useState("");
+
+  useEffect(() => {
+    if (typeof state.identifier === "string") {
+      setIdentifier(state.identifier);
+    }
+    if (state.error) {
+      setPassword("");
+    }
+  }, [state.error, state.identifier]);
 
   return (
     <form action={action} className="mt-6 space-y-4">
       <div>
-        <label htmlFor="email" className="text-sm font-medium">
-          Email
+        <label htmlFor="identifier" className="text-sm font-medium">
+          Email or phone number
         </label>
         <input
-          id="email"
-          name="email"
-          type="email"
+          id="identifier"
+          name="identifier"
+          type="text"
           required
-          autoComplete="email"
-          placeholder="you@company.com"
+          autoComplete="username"
+          inputMode="email"
+          value={identifier}
+          onChange={(event) => setIdentifier(event.target.value)}
+          placeholder="you@company.com or 60123456789"
           className="mt-1.5 block h-10 w-full rounded-md border border-[var(--input)] bg-[var(--background)] px-3 text-sm outline-none placeholder:text-[var(--muted-foreground)]/70 focus:ring-2 focus:ring-[var(--ring)]"
         />
       </div>
       <div>
-        <label htmlFor="password" className="text-sm font-medium">
-          Password{" "}
-          {devEmailLogin && (
-            <span className="text-xs text-[var(--muted-foreground)]">
-              (optional in dev)
-            </span>
-          )}
-        </label>
-        <input
+        <div className="flex items-center justify-between gap-3">
+          <label htmlFor="password" className="text-sm font-medium">
+            Password{" "}
+            {devEmailLogin && (
+              <span className="text-xs text-[var(--muted-foreground)]">
+                (optional in dev)
+              </span>
+            )}
+          </label>
+          <Link
+            href="/forgot-password"
+            className="text-xs text-[var(--muted-foreground)] hover:text-[var(--foreground)] hover:underline"
+          >
+            Forgot password?
+          </Link>
+        </div>
+        <PasswordInput
           id="password"
           name="password"
-          type="password"
           autoComplete="current-password"
+          value={password}
+          onChange={(event) => setPassword(event.target.value)}
           placeholder="••••••••"
-          className="mt-1.5 block h-10 w-full rounded-md border border-[var(--input)] bg-[var(--background)] px-3 text-sm outline-none placeholder:text-[var(--muted-foreground)]/70 focus:ring-2 focus:ring-[var(--ring)]"
+          className="mt-1.5"
         />
       </div>
 

@@ -256,6 +256,15 @@ export const tenantAiSettings = pgTable(
       () => aiProviderConfigs.id,
       { onDelete: "set null" },
     ),
+    enabled: boolean("enabled").notNull().default(true),
+    mode: text("mode").notNull().default("shared_app_per_tenant_dataset"),
+    difyAppId: text("dify_app_id"),
+    difyDatasetId: text("dify_dataset_id"),
+    difyDatasetName: text("dify_dataset_name"),
+    apiKeyRef: text("api_key_ref"),
+    syncStatus: text("sync_status").notNull().default("not_configured"),
+    lastSyncedAt: timestamp("last_synced_at", { withTimezone: true }),
+    lastSyncError: text("last_sync_error"),
     tone: text("tone"),
     language: text("language"),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
@@ -1028,6 +1037,27 @@ export const phoneVerifications = pgTable(
   }),
 );
 
+export const passwordResetSessions = pgTable(
+  "password_reset_sessions",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    phoneVerificationId: uuid("phone_verification_id")
+      .notNull()
+      .references(() => phoneVerifications.id, { onDelete: "cascade" }),
+    resetTokenHash: text("reset_token_hash").notNull(),
+    expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+    usedAt: timestamp("used_at", { withTimezone: true }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => ({
+    tokenUq: uniqueIndex("password_reset_sessions_token_uq").on(t.resetTokenHash),
+    byUser: index("password_reset_sessions_user_idx").on(t.userId),
+  }),
+);
+
 export const pendingRegistrations = pgTable(
   "pending_registrations",
   {
@@ -1052,6 +1082,7 @@ export const pendingRegistrations = pgTable(
 
 export type UserSystemRole = typeof userSystemRoles.$inferSelect;
 export type PhoneVerification = typeof phoneVerifications.$inferSelect;
+export type PasswordResetSession = typeof passwordResetSessions.$inferSelect;
 export type PendingRegistration = typeof pendingRegistrations.$inferSelect;
 
 /* ────────────────────────────────────────────────────────────── */

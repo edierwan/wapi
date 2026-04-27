@@ -2,6 +2,7 @@
 
 import { useActionState } from "react";
 import { Button } from "@/components/ui/button";
+import { PasswordInput } from "@/components/ui/password-input";
 import { registerAction, type RegisterFormState } from "./actions";
 
 const initial: RegisterFormState = { ok: false };
@@ -159,17 +160,28 @@ function Field({
   label: string;
   hint?: string;
 } & React.InputHTMLAttributes<HTMLInputElement>) {
+  const input = rest.type === "password" ? (
+    <PasswordInput
+      id={name}
+      name={name}
+      className=""
+      {...rest}
+    />
+  ) : (
+    <input
+      id={name}
+      name={name}
+      className="block h-10 w-full rounded-md border border-[var(--input)] bg-[var(--background)] px-3 text-sm outline-none placeholder:text-[var(--muted-foreground)]/70 focus:ring-2 focus:ring-[var(--ring)]"
+      {...rest}
+    />
+  );
+
   return (
     <div>
       <label htmlFor={name} className="mb-1 block text-xs font-medium text-[var(--muted-foreground)]">
         {label}
       </label>
-      <input
-        id={name}
-        name={name}
-        className="block h-10 w-full rounded-md border border-[var(--input)] bg-[var(--background)] px-3 text-sm outline-none placeholder:text-[var(--muted-foreground)]/70 focus:ring-2 focus:ring-[var(--ring)]"
-        {...rest}
-      />
+      {input}
       {hint && (
         <p className="mt-1 text-xs text-[var(--muted-foreground)]">{hint}</p>
       )}

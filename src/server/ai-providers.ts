@@ -54,7 +54,7 @@ export async function getTenantProvider(
     // Tenant safety: if the configured row belongs to another tenant,
     // ignore it and fall through. A null tenantId (global) is allowed.
     if (row && (row.tenantId === null || row.tenantId === tenantId)) {
-      return toResolved(row);
+      return toResolved(row, settings);
     }
   }
 
@@ -70,7 +70,7 @@ export async function getTenantProvider(
     )
     .orderBy(desc(schema.aiProviderConfigs.updatedAt))
     .limit(1);
-  if (tenantDefault) return toResolved(tenantDefault);
+  if (tenantDefault) return toResolved(tenantDefault, settings);
 
   // 3. global default
   const [globalDefault] = await db
@@ -84,22 +84,31 @@ export async function getTenantProvider(
     )
     .orderBy(desc(schema.aiProviderConfigs.updatedAt))
     .limit(1);
-  if (globalDefault) return toResolved(globalDefault);
+  if (globalDefault) return toResolved(globalDefault, settings);
 
   return null;
 }
 
 function toResolved(
   row: typeof schema.aiProviderConfigs.$inferSelect,
+  settings?: typeof schema.tenantAiSettings.$inferSelect,
 ): ResolvedProvider {
+  const config = ((row.config as Record<string, unknown> | null) ?? {}) as Record<
+    string,
+    unknown
+  >;
+
   return {
     id: row.id,
     tenantId: row.tenantId,
     name: row.name,
     kind: row.kind,
     baseUrl: row.baseUrl,
-    apiKeyRef: row.apiKeyRef,
-    config: (row.config as Record<string, unknown> | null) ?? null,
+    apiKeyRef: settings?.apiKeyRef ?? row.apiKeyRef,
+    config: {
+      ...config,
+      ...(settings?.difyAppId ? { appId: settings.difyAppId } : null),
+    },
     isTenantOwned: row.tenantId !== null,
   };
 }

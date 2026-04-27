@@ -16,9 +16,14 @@ export const metadata: Metadata = {
 
 export const dynamic = "force-dynamic";
 
-export default async function LoginPage() {
+export default async function LoginPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ notice?: string }>;
+}) {
   const me = await getCurrentUser().catch(() => null);
   if (me) redirect("/dashboard");
+  const { notice } = await searchParams;
 
   return (
     <div className="relative grid min-h-dvh place-items-center px-4 py-10">
@@ -45,6 +50,12 @@ export default async function LoginPage() {
           <p className="mt-1 text-sm text-[var(--muted-foreground)]">
             Sign in to your {appConfig.name} workspace.
           </p>
+
+          {notice ? (
+            <div className="mt-4 rounded-md border border-emerald-500/30 bg-emerald-500/10 px-3 py-2 text-sm text-emerald-700">
+              {notice}
+            </div>
+          ) : null}
 
           <LoginForm devEmailLogin={process.env.ENABLE_DEV_EMAIL_LOGIN === "true"} />
 

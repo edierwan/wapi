@@ -22,9 +22,9 @@ export async function sendOtpViaProvider(input: {
   const devFallback = process.env.ENABLE_DEV_OTP_FALLBACK === "true";
 
   const text =
-    `Your WAPI verification code is ${input.code}. ` +
-    `It expires in ${process.env.OTP_EXPIRES_MINUTES || 10} minutes. ` +
-    `Do not share this code.`;
+    input.purpose === "password_reset"
+      ? `Your WAPI password reset code is ${input.code}. It expires in ${process.env.OTP_EXPIRES_MINUTES || 10} minutes. Do not share this code.`
+      : `Your WAPI verification code is ${input.code}. It expires in ${process.env.OTP_EXPIRES_MINUTES || 10} minutes. Do not share this code.`;
 
   if (provider === "whatsapp_gateway") {
     const base = process.env.WA_GATEWAY_URL || process.env.WA_GATEWAY_DEFAULT_URL;
