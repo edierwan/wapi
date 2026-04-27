@@ -10,7 +10,8 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { TenantSubNav } from "@/components/tenant/sub-nav";
+import { getTenantPageSectionLabel } from "@/components/tenant/tenant-nav-items";
+import { TenantPage, TenantPageHeader } from "@/components/tenant/tenant-page";
 import { getDb, schema } from "@/db/client";
 import { requireTenantContext } from "@/server/tenant-guard";
 import { listActiveCurrencies, listActiveUnits } from "@/server/reference-data";
@@ -195,32 +196,26 @@ export default async function ProductsPage({
   ).length;
 
   return (
-    <section className="mx-auto max-w-7xl px-4 py-12 sm:px-6 lg:px-8">
-      <TenantSubNav slug={ctx.tenant.slug} active="Products" />
+    <TenantPage>
+      <TenantPageHeader
+        sectionLabel={getTenantPageSectionLabel("Products")}
+        title="Products"
+        description="One product source of truth for humans, AI assistants, WhatsApp campaigns, landing pages, and future marketplace sync. Keep the form simple, but store enough detail so the system never has to guess."
+      />
 
-      <div className="mb-8 flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
-        <div className="max-w-3xl">
-          <h1 className="text-3xl font-semibold tracking-tight text-[var(--foreground)]">
-            Product master data
-          </h1>
-          <p className="mt-2 text-sm leading-6 text-[var(--muted-foreground)]">
-            One product source of truth for humans, AI assistants, WhatsApp campaigns, landing pages, and future marketplace sync. Keep the form simple, but store enough detail so the system never has to guess.
-          </p>
+      {!canWrite ? (
+        <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-700">
+          You can view products, but only tenant owners and admins can change the product master.
         </div>
-        {!canWrite ? (
-          <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-700">
-            You can view products, but only tenant owners and admins can change the product master.
-          </div>
-        ) : null}
-      </div>
+      ) : null}
 
       {notice ? (
-        <div className="mb-6 rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-700">
+        <div className="rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-700">
           {notice}
         </div>
       ) : null}
 
-      <div className="mb-8 grid gap-4 md:grid-cols-3">
+      <div className="grid gap-4 md:grid-cols-3">
         <Card>
           <CardHeader className="pb-2">
             <CardDescription>Total products</CardDescription>
@@ -427,6 +422,6 @@ export default async function ProductsPage({
           ) : null}
         </div>
       </div>
-    </section>
+    </TenantPage>
   );
 }

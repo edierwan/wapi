@@ -7,7 +7,8 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { TenantSubNav } from "@/components/tenant/sub-nav";
+import { getTenantPageSectionLabel } from "@/components/tenant/tenant-nav-items";
+import { TenantPage, TenantPageHeader } from "@/components/tenant/tenant-page";
 import { requireTenantContext } from "@/server/tenant-guard";
 import { listConversations } from "@/server/inbox";
 
@@ -36,22 +37,12 @@ export default async function InboxPage({
   const conversations = await listConversations(ctx.tenant.id, { limit: 200 });
 
   return (
-    <section className="mx-auto max-w-6xl px-4 py-12 sm:px-6 lg:px-8">
-      <TenantSubNav slug={ctx.tenant.slug} active="Inbox" />
-
-      <div className="mb-6 flex items-start gap-3">
-        <div className="rounded-md bg-[var(--accent)] p-2 text-[var(--foreground)]">
-          <Inbox className="size-5" />
-        </div>
-        <div>
-          <h1 className="text-2xl font-semibold">Inbox</h1>
-          <p className="text-sm text-[var(--muted-foreground)]">
-            Tenant-scoped conversations across WhatsApp. Identity is keyed
-            on tenant + normalized phone number, ready to expand to other
-            channels later. Read-only first slice.
-          </p>
-        </div>
-      </div>
+    <TenantPage>
+      <TenantPageHeader
+        sectionLabel={getTenantPageSectionLabel("Inbox")}
+        title="Inbox"
+        description="Tenant-scoped conversations across WhatsApp. Identity is keyed on tenant and normalized phone number, ready to expand to other channels later."
+      />
 
       <Card>
         <CardHeader>
@@ -127,6 +118,6 @@ export default async function InboxPage({
           )}
         </CardContent>
       </Card>
-    </section>
+    </TenantPage>
   );
 }

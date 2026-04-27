@@ -1,4 +1,5 @@
-import { TenantSubNav } from "@/components/tenant/sub-nav";
+import { getTenantPageSectionLabel } from "@/components/tenant/tenant-nav-items";
+import { TenantPage, TenantPageHeader } from "@/components/tenant/tenant-page";
 import { requireTenantContext } from "@/server/tenant-guard";
 import { getTenantProvider } from "@/server/ai-providers";
 import { resolveTenantDifyDataset } from "@/server/tenant-dify";
@@ -34,20 +35,15 @@ export default async function AiDraftPage({
     : query.knowledgeCount;
 
   return (
-    <section className="mx-auto max-w-4xl px-4 py-12 sm:px-6 lg:px-8">
-      <TenantSubNav slug={ctx.tenant.slug} active="AI" />
-
-      <div className="mb-6">
-        <h1 className="text-2xl font-semibold tracking-tight">AI draft assistant</h1>
-        <p className="mt-1 text-sm text-[var(--muted-foreground)]">
-          Manual, human-in-the-loop only. Paste a customer message; we
-          assemble tenant context (profile, catalog, business memory) and
-          ask your AI provider for a draft. Nothing is sent or persisted.
-        </p>
-      </div>
+    <TenantPage>
+      <TenantPageHeader
+        sectionLabel={getTenantPageSectionLabel("AI")}
+        title="AI"
+        description="Manual, human-in-the-loop only. Paste a customer message; we assemble tenant context and ask your AI provider for a draft. Nothing is sent or persisted."
+      />
 
       {syncMessage ? (
-        <Card className="mb-6">
+        <Card>
           <CardHeader>
             <CardTitle className="text-base">Knowledge sync status</CardTitle>
             <CardDescription>
@@ -59,7 +55,7 @@ export default async function AiDraftPage({
         </Card>
       ) : null}
 
-      <Card className="mb-6">
+      <Card>
         <CardHeader>
           <CardTitle className="text-base">Provider status</CardTitle>
           <CardDescription>
@@ -96,7 +92,7 @@ export default async function AiDraftPage({
         </CardContent>
       </Card>
 
-      <Card className="mb-6">
+      <Card>
         <CardHeader>
           <CardTitle className="text-base">Tenant Dify dataset</CardTitle>
           <CardDescription>
@@ -151,6 +147,6 @@ export default async function AiDraftPage({
       </Card>
 
       <DraftReplyForm tenantSlug={ctx.tenant.slug} />
-    </section>
+    </TenantPage>
   );
 }

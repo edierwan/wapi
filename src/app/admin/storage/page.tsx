@@ -65,10 +65,9 @@ export default async function AdminStoragePage() {
     <section className="space-y-6">
       <div className="flex items-start justify-between gap-4">
         <div>
-          <h1 className="text-xl font-semibold">Object Storage</h1>
+          <h1 className="text-xl font-semibold">Storage Backend</h1>
           <p className="text-sm text-[var(--muted-foreground)]">
-            S3-compatible bucket usage, per-tenant prefix layout, and
-            initialization status. Backed by self-hosted SeaweedFS.
+            System-admin-only view of provider health, tenant prefixes, and storage initialization status.
           </p>
         </div>
         <Link

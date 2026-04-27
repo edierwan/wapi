@@ -8,7 +8,8 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { TenantSubNav } from "@/components/tenant/sub-nav";
+import { getTenantPageSectionLabel } from "@/components/tenant/tenant-nav-items";
+import { TenantPage, TenantPageHeader } from "@/components/tenant/tenant-page";
 import { requireTenantContext } from "@/server/tenant-guard";
 import { getBusinessProfile } from "@/server/business-profile";
 
@@ -26,23 +27,19 @@ export default async function BusinessSettingsPage({
   const canEdit = ["owner", "admin"].includes(ctx.currentUserRole ?? "");
 
   return (
-    <section className="mx-auto max-w-5xl px-4 py-12 sm:px-6 lg:px-8">
-      <TenantSubNav slug={ctx.tenant.slug} active="Settings" />
-
-      <div className="mb-6 flex flex-wrap items-start justify-between gap-3">
-        <div>
-          <h1 className="text-2xl font-semibold tracking-tight">Business profile</h1>
-          <p className="mt-1 text-sm text-[var(--muted-foreground)]">
-            The foundation of your tenant&apos;s &quot;Business Brain&quot;. AI reads this on every
-            generation.
-          </p>
-        </div>
-        {canEdit && (
-          <Button asChild variant="outline" size="sm">
-            <Link href={`/t/${ctx.tenant.slug}/onboarding`}>Edit</Link>
-          </Button>
-        )}
-      </div>
+    <TenantPage>
+      <TenantPageHeader
+        sectionLabel={getTenantPageSectionLabel("Settings")}
+        title="Business profile"
+        description="The foundation of your tenant's Business Brain. AI reads this on every generation."
+        actions={
+          canEdit ? (
+            <Button asChild variant="outline" size="sm">
+              <Link href={`/t/${ctx.tenant.slug}/onboarding`}>Edit</Link>
+            </Button>
+          ) : null
+        }
+      />
 
       {!profile ? (
         <Card>
@@ -91,7 +88,7 @@ export default async function BusinessSettingsPage({
           </CardContent>
         </Card>
       )}
-    </section>
+    </TenantPage>
   );
 }
 

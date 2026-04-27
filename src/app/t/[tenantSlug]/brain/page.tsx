@@ -8,7 +8,8 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { TenantSubNav } from "@/components/tenant/sub-nav";
+import { getTenantPageSectionLabel } from "@/components/tenant/tenant-nav-items";
+import { TenantPage, TenantPageHeader } from "@/components/tenant/tenant-page";
 import { requireTenantContext } from "@/server/tenant-guard";
 import {
   MEMORY_KINDS,
@@ -46,26 +47,14 @@ export default async function BusinessBrainPage({
   }
 
   return (
-    <section className="mx-auto max-w-5xl px-4 py-12 sm:px-6 lg:px-8">
-      <TenantSubNav slug={ctx.tenant.slug} active="Brain" />
+    <TenantPage>
+      <TenantPageHeader
+        sectionLabel={getTenantPageSectionLabel("Brain")}
+        title="Business Brain"
+        description="Facts, FAQs, policies, brand voice and offers your AI uses to ground every reply and campaign. Stored per tenant; never shared across workspaces."
+      />
 
-      <div className="mb-6 flex items-start gap-3">
-        <div className="inline-flex size-10 items-center justify-center rounded-lg bg-[color-mix(in_oklch,var(--primary)_12%,transparent)] text-[var(--primary)]">
-          <Brain className="size-5" />
-        </div>
-        <div>
-          <h1 className="text-2xl font-semibold tracking-tight">
-            Business Brain
-          </h1>
-          <p className="mt-1 text-sm text-[var(--muted-foreground)]">
-            Facts, FAQs, policies, brand voice and offers your AI uses to
-            ground every reply and campaign. Stored per tenant; never shared
-            across workspaces.
-          </p>
-        </div>
-      </div>
-
-      <Card className="mb-8">
+      <Card>
         <CardHeader>
           <CardTitle className="text-base">Add a memory item</CardTitle>
           <CardDescription>
@@ -312,6 +301,6 @@ export default async function BusinessBrainPage({
           })}
         </div>
       )}
-    </section>
+    </TenantPage>
   );
 }
