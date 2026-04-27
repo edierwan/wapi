@@ -5,6 +5,7 @@ import { redirect } from "next/navigation";
 import { z } from "zod";
 import { getCurrentUser } from "@/server/auth";
 import { resolveTenantBySlug } from "@/server/tenant";
+import { requireTenantModuleEnabled } from "@/server/tenant-modules";
 import { requireDb, schema } from "@/db/client";
 
 const writeRoles = new Set(["owner", "admin"]);
@@ -49,6 +50,11 @@ export async function createServiceAction(formData: FormData) {
   const raw = Object.fromEntries(formData.entries());
   const data = serviceSchema.parse(raw);
   const ctx = await authForWrite(data.tenantSlug);
+  await requireTenantModuleEnabled({
+    tenantId: ctx.tenant.id,
+    tenantSlug: data.tenantSlug,
+    moduleCode: "services",
+  });
   const db = requireDb();
 
   const price = data.defaultPrice.trim();

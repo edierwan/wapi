@@ -7,6 +7,7 @@ import { z } from "zod";
 import { requireDb, schema } from "@/db/client";
 import { getCurrentUser } from "@/server/auth";
 import { resolveTenantBySlug } from "@/server/tenant";
+import { requireTenantModuleEnabled } from "@/server/tenant-modules";
 
 const writeRoles = new Set(["owner", "admin"]);
 
@@ -128,6 +129,11 @@ async function requireProductWriteContext(tenantSlug: string) {
 
   const ctx = await resolveTenantBySlug({ slug: tenantSlug, currentUserId: me.id });
   if (!ctx.ok) redirect("/dashboard");
+  await requireTenantModuleEnabled({
+    tenantId: ctx.tenant.id,
+    tenantSlug,
+    moduleCode: "products",
+  });
   if (!writeRoles.has(ctx.currentUserRole ?? "")) {
     redirect(`/t/${tenantSlug}/products`);
   }

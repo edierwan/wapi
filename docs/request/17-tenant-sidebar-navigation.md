@@ -2,6 +2,11 @@
 
 Status: SHIPPED 2026-04-27.
 
+Update 2026-04-28: the sidebar is no longer purely hardcoded at runtime.
+Route metadata still lives in code, but visible items are now filtered by the
+tenant's enabled modules from `tenant_modules`, with defaults coming from
+`industry_module_presets` and user overrides managed at Settings → Modules.
+
 ## Problem
 
 Tenant workspace pages under `/t/[tenantSlug]` were using a horizontal top
@@ -15,7 +20,8 @@ similar to the system admin sidebar, kept distinct from `/admin`.
   defines section groupings (Workspace / Communication / Catalog / AI &
   Growth / Settings) and the active-state matcher
   `isTenantNavItemActive(item, slug, pathname)` so nested detail routes
-  highlight the correct parent.
+  highlight the correct parent. Each module-backed item now also carries a
+  stable `moduleCode` so the tenant layout can hide or show it dynamically.
 - **New sidebar component** — `src/components/tenant/tenant-sidebar.tsx`
   renders the sticky desktop sidebar. On `lg` and up it docks alongside the
   main content; below `lg` it collapses into a slide-in drawer triggered by
@@ -23,9 +29,13 @@ similar to the system admin sidebar, kept distinct from `/admin`.
   viewports without horizontal overflow.
 - **New tenant layout** —
   `src/app/t/[tenantSlug]/layout.tsx` wraps every tenant page with the
-  sidebar + main flex container. The shared root tenant layout
+  sidebar + main flex container and now passes the enabled tenant modules to
+  the client sidebar. The shared root tenant layout
   (`src/app/t/layout.tsx`) — which provides the WAPI navbar (logo, theme,
   user, Dashboard link, Sign out) and footer — is unchanged.
+- **Tenant module settings** — `/t/{slug}/settings/modules` lets owners/admins
+  toggle modules on or off. The setting writes `tenant_modules.source='manual'`
+  so later industry re-syncs do not overwrite explicit workspace choices.
 - **Horizontal nav neutralized** — `src/components/tenant/sub-nav.tsx`
   is now a no-op (`TenantSubNav` returns `null`). Existing pages that still
   import it continue to compile; the sidebar in the layout drives all

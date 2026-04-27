@@ -6,7 +6,11 @@ import { z } from "zod";
 import { getCurrentUser } from "@/server/auth";
 import { resolveTenantBySlug } from "@/server/tenant";
 import { upsertBusinessProfile } from "@/server/business-profile";
-import { validateActiveRefIds } from "@/server/reference-data";
+import { syncTenantModulesFromProfile } from "@/server/tenant-modules";
+import {
+  inferBusinessProfileDefaults,
+  validateActiveRefIds,
+} from "@/server/reference-data";
 
 // Legacy enum kept for backward-compat with the existing
 // `tenant_business_profiles.business_nature` text column.
@@ -28,7 +32,7 @@ const optionalUuid = z
 
 const schema = z.object({
   tenantSlug: z.string(),
-  businessNature: BusinessNatureEnum,
+  businessNature: BusinessNatureEnum.optional(),
   industry: z.string().max(120).optional().default(""),
   defaultCurrency: z.string().length(3).default("MYR"),
   defaultLanguage: z.string().min(2).max(5).default("en"),
@@ -85,28 +89,42 @@ export async function saveBusinessProfileAction(formData: FormData) {
     throw new Error(`Invalid reference IDs: ${v.invalid.join(", ")}`);
   }
 
-  await upsertBusinessProfile({
-    tenantId: tenantRes.tenant.id,
-    businessNature: data.businessNature,
-    industry: data.industry || null,
-    defaultCurrency: data.defaultCurrency,
-    defaultLanguage: data.defaultLanguage,
-    timezone: data.timezone,
-    primaryCountry: data.primaryCountry,
-    primaryPhone: data.primaryPhone || null,
-    supportEmail: data.supportEmail || null,
-    websiteUrl: data.websiteUrl || null,
-    brandVoice: data.brandVoice || null,
-    industryId: data.industryId ?? null,
+  const inferred = await inferBusinessProfileDefaults({
     countryId: data.countryId ?? null,
     currencyId: data.currencyId ?? null,
     languageId: data.languageId ?? null,
     timezoneId: data.timezoneId ?? null,
+    industryId: data.industryId ?? null,
+    businessNature: data.businessNature ?? null,
     businessNatureId: data.businessNatureId ?? null,
+    brandVoice: data.brandVoice || null,
     brandVoiceId: data.brandVoiceId ?? null,
+  });
+
+  await upsertBusinessProfile({
+    tenantId: tenantRes.tenant.id,
+    businessNature: inferred.businessNature,
+    industry: data.industry || inferred.industryName || null,
+    defaultCurrency: inferred.defaultCurrencyCode,
+    defaultLanguage: inferred.defaultLanguageCode,
+    timezone: inferred.timezoneName,
+    primaryCountry: inferred.primaryCountryCode,
+    primaryPhone: data.primaryPhone || null,
+    supportEmail: data.supportEmail || null,
+    websiteUrl: data.websiteUrl || null,
+    brandVoice: inferred.brandVoiceText,
+    industryId: inferred.industryId,
+    countryId: inferred.countryId,
+    currencyId: inferred.currencyId,
+    languageId: inferred.languageId,
+    timezoneId: inferred.timezoneId,
+    businessNatureId: inferred.businessNatureId,
+    brandVoiceId: inferred.brandVoiceId,
     brandVoiceCustom: data.brandVoiceCustom || null,
     completeOnboarding: data.completeOnboarding === "1",
   });
+
+  await syncTenantModulesFromProfile(tenantRes.tenant.id);
 
   revalidatePath(`/t/${data.tenantSlug}`, "layout");
   redirect(`/t/${data.tenantSlug}`);

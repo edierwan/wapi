@@ -6,19 +6,22 @@ import { useState } from "react";
 import { Menu, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
-  TENANT_NAV_SECTIONS,
+  filterTenantNavSections,
   isTenantNavItemActive,
 } from "./tenant-nav-items";
 
 export function TenantSidebar({
   slug,
   displayName,
+  enabledModules,
 }: {
   slug: string;
   displayName?: string;
+  enabledModules: string[];
 }) {
   const pathname = usePathname() ?? "";
   const [open, setOpen] = useState(false);
+  const sections = filterTenantNavSections(enabledModules);
 
   return (
     <>
@@ -64,7 +67,7 @@ export function TenantSidebar({
           </div>
 
           <nav className="flex-1 space-y-4">
-            {TENANT_NAV_SECTIONS.map((section) => (
+            {sections.map((section) => (
               <div key={section.label}>
                 <p className="px-2 pb-1 text-[10px] font-semibold uppercase tracking-wider text-[var(--muted-foreground)]">
                   {section.label}

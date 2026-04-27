@@ -13,6 +13,7 @@ import {
 import { getTenantPageSectionLabel } from "@/components/tenant/tenant-nav-items";
 import { TenantPage, TenantPageHeader } from "@/components/tenant/tenant-page";
 import { getDb, schema } from "@/db/client";
+import { requireTenantModuleEnabled } from "@/server/tenant-modules";
 import { requireTenantContext } from "@/server/tenant-guard";
 import { listActiveCurrencies, listActiveUnits } from "@/server/reference-data";
 import { ProductEditorForm } from "./product-editor-form";
@@ -68,6 +69,11 @@ export default async function ProductsPage({
   const { tenantSlug } = await params;
   const query = (await searchParams) ?? {};
   const ctx = await requireTenantContext(tenantSlug);
+  await requireTenantModuleEnabled({
+    tenantId: ctx.tenant.id,
+    tenantSlug: ctx.tenant.slug,
+    moduleCode: "products",
+  });
   const db = getDb();
   const canWrite = ["owner", "admin"].includes(ctx.currentUserRole ?? "");
   const notice = firstValue(query.notice);

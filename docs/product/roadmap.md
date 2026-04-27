@@ -20,6 +20,8 @@ Everything after is post-MVP.
 - Phase 5 foundation is partially shipped:
 	- reference/master data schema
 	- onboarding redesign data model and live form flow
+	- AI-first onboarding simplification (industry + country first, inferred defaults)
+	- dynamic module catalog foundation (`modules`, `industry_module_presets`, `tenant_modules`)
 	- contacts/business-memory/AI-readiness schema
 	- admin shell and placeholder admin routes
 - Phase 5 tenant UI tranche **1 is shipped**:
@@ -93,10 +95,12 @@ Already shipped in this phase:
 	- `ref_business_natures`
 	- `ref_brand_voices`
 - onboarding redesign:
-	- dropdown-backed business profile form
-	- country-driven currency/language/timezone cascade
-	- brand-voice presets + custom notes
+	- minimal first-run business setup (industry, country, optional support email, optional website)
+	- country-driven currency/language/timezone inference with optional advanced overrides
+	- business-nature inference from industry
+	- default AI tone applied automatically instead of blocking on brand-voice selection
 	- backward-compatible legacy text-column hydration
+	- dynamic module sync from industry preset into `tenant_modules`
 - schema landed for:
 	- `contacts`
 	- `contact_tags`
@@ -113,8 +117,9 @@ Still pending to complete the functional Phase 5 tranche:
 
 - CSV import, bulk tagging, opt-out workflows (`opt_outs`)
 - Product / service editor follow-through: product variants, service packages, service availability, MinIO-backed media uploads
-- Wizard steps 3–7: WhatsApp · products/services · business memory · campaign goal · AI first-campaign draft
+- deeper post-onboarding setup surfaces: WhatsApp · products/services · business memory · campaign goal · AI first-campaign draft
 - richer AI Readiness signals (gateway connection, opt-in coverage, send history)
+- wider module-aware route guards beyond the first guarded routes (`Products`, `Services`)
 
 Shipped in tranche 1 of the functional Phase 5 work:
 

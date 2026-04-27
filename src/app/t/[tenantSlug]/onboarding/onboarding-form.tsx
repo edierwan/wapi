@@ -56,18 +56,6 @@ export type OnboardingRefData = {
   voices: BrandVoice[];
 };
 
-// Map a ref_business_natures.code → legacy `business_nature` enum value the
-// existing tenant_business_profiles.business_nature column accepts.
-const NATURE_CODE_TO_LEGACY: Record<string, string> = {
-  product: "product",
-  service: "service",
-  hybrid: "hybrid",
-  booking: "booking",
-  lead_generation: "lead_gen",
-  support_helpdesk: "support",
-  other: "other",
-};
-
 export function OnboardingForm({
   refData,
   defaults,
@@ -79,39 +67,30 @@ export function OnboardingForm({
   // or fall back to Malaysia.
   const malaysia = refData.countries.find((c) => c.iso2Code === "MY") ?? refData.countries[0];
   const initialCountryId = defaults.countryId ?? malaysia?.id ?? "";
+  const initialCountry =
+    refData.countries.find((country) => country.id === initialCountryId) ?? malaysia ?? null;
 
   const [countryId, setCountryId] = useState(initialCountryId);
   const [currencyId, setCurrencyId] = useState(
     defaults.currencyId ??
-      currencyFromCountry(refData.currencies, malaysia ?? null) ??
+      currencyFromCountry(refData.currencies, initialCountry) ??
       "",
   );
   const [languageId, setLanguageId] = useState(
     defaults.languageId ??
-      languageFromCountry(refData.languages, malaysia ?? null) ??
+      languageFromCountry(refData.languages, initialCountry) ??
       "",
   );
   const [timezoneId, setTimezoneId] = useState(
     defaults.timezoneId ??
-      timezoneFromCountry(refData.timezones, malaysia ?? null) ??
+      timezoneFromCountry(refData.timezones, initialCountry) ??
       "",
   );
   const [industryId, setIndustryId] = useState(defaults.industryId ?? "");
-  const [natureId, setNatureId] = useState(
-    defaults.businessNatureId ??
-      refData.natures.find((n) => n.code === "service")?.id ??
-      "",
-  );
-  const [voiceId, setVoiceId] = useState(defaults.brandVoiceId ?? "");
-  const [voiceCustom, setVoiceCustom] = useState(defaults.brandVoiceCustom ?? "");
 
   const selectedCountry = useMemo(
     () => refData.countries.find((c) => c.id === countryId) ?? null,
     [refData.countries, countryId],
-  );
-  const selectedNature = useMemo(
-    () => refData.natures.find((n) => n.id === natureId) ?? null,
-    [refData.natures, natureId],
   );
   const selectedCurrency = useMemo(
     () => refData.currencies.find((c) => c.id === currencyId) ?? null,
@@ -124,6 +103,10 @@ export function OnboardingForm({
   const selectedTimezone = useMemo(
     () => refData.timezones.find((t) => t.id === timezoneId) ?? null,
     [refData.timezones, timezoneId],
+  );
+  const selectedIndustry = useMemo(
+    () => refData.industries.find((industry) => industry.id === industryId) ?? null,
+    [refData.industries, industryId],
   );
 
   function onCountryChange(newId: string) {
@@ -139,22 +122,13 @@ export function OnboardingForm({
     if (tz) setTimezoneId(tz.id);
   }
 
-  // Derive the legacy enum value (required by existing column).
-  const legacyNature = selectedNature
-    ? NATURE_CODE_TO_LEGACY[selectedNature.code] ?? "other"
-    : defaults.legacyBusinessNature ?? "service";
-
   return (
     <>
-      {/* Hidden mirrors so the existing server action receives both old + new. */}
-      <input type="hidden" name="businessNature" value={legacyNature} />
-      <input type="hidden" name="businessNatureId" value={natureId} />
       <input type="hidden" name="industryId" value={industryId} />
       <input type="hidden" name="countryId" value={countryId} />
       <input type="hidden" name="currencyId" value={currencyId} />
       <input type="hidden" name="languageId" value={languageId} />
       <input type="hidden" name="timezoneId" value={timezoneId} />
-      <input type="hidden" name="brandVoiceId" value={voiceId} />
       <input
         type="hidden"
         name="primaryCountry"
@@ -175,38 +149,31 @@ export function OnboardingForm({
         name="timezone"
         value={selectedTimezone?.name ?? "Asia/Kuala_Lumpur"}
       />
+      <input type="hidden" name="brandVoice" value="" />
+      <input type="hidden" name="brandVoiceCustom" value="" />
+      <input type="hidden" name="industry" value={selectedIndustry?.name ?? defaults.industryFreeText ?? ""} />
 
       <Card>
         <CardHeader>
-          <CardTitle className="text-base">Business nature</CardTitle>
+          <CardTitle className="text-base">AI workspace setup</CardTitle>
           <CardDescription>
-            Pick the closest match. Gates which setup modules appear.
+            Keep setup lightweight. We use your industry and country to infer
+            your starting business type, language defaults, and AI tone.
           </CardDescription>
         </CardHeader>
-        <CardContent className="grid gap-2 sm:grid-cols-2">
-          {refData.natures.map((n) => (
-            <label
-              key={n.id}
-              className="flex cursor-pointer items-start gap-3 rounded-md border border-[var(--border)] p-3 transition hover:border-[var(--primary)]/50 has-[:checked]:border-[var(--primary)] has-[:checked]:bg-[color-mix(in_oklch,var(--primary)_6%,transparent)]"
-            >
-              <input
-                type="radio"
-                name="natureRadio"
-                value={n.id}
-                checked={natureId === n.id}
-                onChange={() => setNatureId(n.id)}
-                className="mt-1"
-              />
-              <span>
-                <span className="block text-sm font-medium">{n.name}</span>
-                {n.description ? (
-                  <span className="mt-0.5 block text-xs text-[var(--muted-foreground)]">
-                    {n.description}
-                  </span>
-                ) : null}
-              </span>
-            </label>
-          ))}
+        <CardContent className="grid gap-3 text-sm text-[var(--muted-foreground)] sm:grid-cols-3">
+          <div className="rounded-lg border border-[var(--border)] bg-[var(--muted)]/20 p-3">
+            <p className="text-xs font-semibold uppercase tracking-wide">Business type</p>
+            <p className="mt-1">Inferred from your industry so you can skip the setup quiz.</p>
+          </div>
+          <div className="rounded-lg border border-[var(--border)] bg-[var(--muted)]/20 p-3">
+            <p className="text-xs font-semibold uppercase tracking-wide">Language mode</p>
+            <p className="mt-1">AI starts in auto mode and falls back to your country defaults.</p>
+          </div>
+          <div className="rounded-lg border border-[var(--border)] bg-[var(--muted)]/20 p-3">
+            <p className="text-xs font-semibold uppercase tracking-wide">Brand voice</p>
+            <p className="mt-1">WAPI starts with a friendly professional tone you can refine later.</p>
+          </div>
         </CardContent>
       </Card>
 
@@ -214,9 +181,7 @@ export function OnboardingForm({
         <CardHeader>
           <CardTitle className="text-base">Basics</CardTitle>
           <CardDescription>
-            Used for AI tone, number formatting, and default language.
-            Choosing a country auto-fills currency, language, and timezone —
-            you can still override.
+            The only inputs needed to get your workspace ready.
           </CardDescription>
         </CardHeader>
         <CardContent className="grid gap-4 sm:grid-cols-2">
@@ -240,36 +205,6 @@ export function OnboardingForm({
               label: `${c.name} (${c.iso2Code})`,
             }))}
           />
-          <SelectField
-            label="Default currency"
-            value={currencyId}
-            onChange={setCurrencyId}
-            options={refData.currencies.map((c) => ({
-              value: c.id,
-              label: `${c.code} — ${c.name}${c.symbol ? ` (${c.symbol})` : ""}`,
-            }))}
-          />
-          <SelectField
-            label="Default language"
-            value={languageId}
-            onChange={setLanguageId}
-            options={refData.languages.map((l) => ({
-              value: l.id,
-              label: l.nativeName ? `${l.name} — ${l.nativeName}` : l.name,
-            }))}
-          />
-          <SelectField
-            label="Timezone"
-            value={timezoneId}
-            onChange={setTimezoneId}
-            options={refData.timezones.map((t) => ({ value: t.id, label: t.label }))}
-          />
-          <TextField
-            label="Primary phone"
-            name="primaryPhone"
-            placeholder="+60..."
-            defaultValue={defaults.primaryPhone ?? ""}
-          />
           <TextField
             label="Support email"
             name="supportEmail"
@@ -284,77 +219,55 @@ export function OnboardingForm({
             placeholder="https://..."
             defaultValue={defaults.websiteUrl ?? ""}
           />
+          <div className="rounded-md border border-dashed border-[var(--border)] bg-[var(--muted)]/20 px-3 py-2 text-sm sm:col-span-2">
+            <p className="font-medium text-[var(--foreground)]">Country defaults</p>
+            <p className="mt-1 text-[var(--muted-foreground)]">
+              Currency {selectedCurrency?.code ?? "MYR"}, timezone {selectedTimezone?.label ?? "Asia/Kuala_Lumpur"}, and AI fallback language {selectedLanguage?.name ?? "English"} will be prepared automatically.
+            </p>
+          </div>
         </CardContent>
       </Card>
 
       <Card>
         <CardHeader>
-          <CardTitle className="text-base">Brand voice</CardTitle>
+          <CardTitle className="text-base">Advanced settings</CardTitle>
           <CardDescription>
-            Pick a preset, then add custom notes if needed. AI uses this when
-            drafting campaigns and replies.
+            Optional overrides if you want to fine-tune defaults before entering
+            the workspace.
           </CardDescription>
         </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="grid gap-2 sm:grid-cols-2">
-            {refData.voices.map((v) => (
-              <label
-                key={v.id}
-                className="flex cursor-pointer items-start gap-3 rounded-md border border-[var(--border)] p-3 transition hover:border-[var(--primary)]/50 has-[:checked]:border-[var(--primary)] has-[:checked]:bg-[color-mix(in_oklch,var(--primary)_6%,transparent)]"
-              >
-                <input
-                  type="radio"
-                  name="voiceRadio"
-                  value={v.id}
-                  checked={voiceId === v.id}
-                  onChange={() => setVoiceId(v.id)}
-                  className="mt-1"
-                />
-                <span>
-                  <span className="block text-sm font-medium">{v.name}</span>
-                  {v.description ? (
-                    <span className="mt-0.5 block text-xs text-[var(--muted-foreground)]">
-                      {v.description}
-                    </span>
-                  ) : null}
-                </span>
-              </label>
-            ))}
-            <label className="flex cursor-pointer items-start gap-3 rounded-md border border-dashed border-[var(--border)] p-3 transition hover:border-[var(--primary)]/50 has-[:checked]:border-[var(--primary)]">
-              <input
-                type="radio"
-                name="voiceRadio"
-                value=""
-                checked={voiceId === ""}
-                onChange={() => setVoiceId("")}
-                className="mt-1"
+        <CardContent>
+          <details className="group rounded-lg border border-[var(--border)] bg-[var(--muted)]/10 p-4">
+            <summary className="cursor-pointer list-none text-sm font-medium text-[var(--foreground)]">
+              Advanced defaults
+            </summary>
+            <div className="mt-4 grid gap-4 sm:grid-cols-2">
+              <SelectField
+                label="Currency"
+                value={currencyId}
+                onChange={setCurrencyId}
+                options={refData.currencies.map((c) => ({
+                  value: c.id,
+                  label: `${c.code} — ${c.name}${c.symbol ? ` (${c.symbol})` : ""}`,
+                }))}
               />
-              <span>
-                <span className="block text-sm font-medium">No preset</span>
-                <span className="mt-0.5 block text-xs text-[var(--muted-foreground)]">
-                  Use only the custom notes below.
-                </span>
-              </span>
-            </label>
-          </div>
-          <label className="block text-sm">
-            <span className="mb-1 block text-xs font-medium text-[var(--muted-foreground)]">
-              Custom notes (optional)
-            </span>
-            <textarea
-              name="brandVoiceCustom"
-              rows={3}
-              value={voiceCustom}
-              onChange={(e) => setVoiceCustom(e.target.value)}
-              placeholder="e.g. Always sign off with 'Terima kasih'. Avoid mentioning competitor names."
-              className="w-full rounded-md border border-[var(--border)] bg-[var(--background)] px-3 py-2 text-sm focus:border-[var(--primary)] focus:outline-none focus:ring-2 focus:ring-[var(--primary)]/20"
-            />
-          </label>
-          {/* Keep the legacy free-text column populated for back-compat. */}
-          <input type="hidden" name="brandVoice" value={voiceCustom.slice(0, 400)} />
-          <input type="hidden" name="industry" value={
-            refData.industries.find((i) => i.id === industryId)?.name ?? defaults.industryFreeText ?? ""
-          } />
+              <SelectField
+                label="Timezone"
+                value={timezoneId}
+                onChange={setTimezoneId}
+                options={refData.timezones.map((t) => ({ value: t.id, label: t.label }))}
+              />
+              <div className="rounded-md border border-[var(--border)] bg-[var(--background)] px-3 py-2 text-sm sm:col-span-2">
+                <div className="mb-1 text-xs font-medium uppercase tracking-wide text-[var(--muted-foreground)]">
+                  AI language mode
+                </div>
+                <div className="font-medium text-[var(--foreground)]">Auto</div>
+                <p className="mt-1 text-xs text-[var(--muted-foreground)]">
+                  WAPI auto-detects the customer language and uses your country default as a fallback.
+                </p>
+              </div>
+            </div>
+          </details>
         </CardContent>
       </Card>
     </>

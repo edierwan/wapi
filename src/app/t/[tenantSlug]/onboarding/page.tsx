@@ -33,11 +33,12 @@ export default async function OnboardingPage({
           {existing?.onboardingCompletedAt ? "Update business profile" : "Welcome to WAPI"}
         </p>
         <h1 className="mt-2 text-3xl font-semibold tracking-tight">
-          Tell us about {ctx.tenant.name}
+          Set up {ctx.tenant.name}
         </h1>
         <p className="mt-3 text-sm text-[var(--muted-foreground)]">
-          This shapes your workspace and grounds every AI-drafted message.
-          You can edit everything later under Settings → Business.
+          Start with your industry and country. WAPI infers the rest so your
+          AI workspace is usable immediately, and you can fine-tune details later
+          under Settings → Business.
         </p>
       </div>
 

@@ -12,6 +12,7 @@ import {
 import { getTenantPageSectionLabel } from "@/components/tenant/tenant-nav-items";
 import { TenantPage, TenantPageHeader } from "@/components/tenant/tenant-page";
 import { requireTenantContext } from "@/server/tenant-guard";
+import { requireTenantModuleEnabled } from "@/server/tenant-modules";
 import { getDb, schema } from "@/db/client";
 import { createServiceAction } from "../_catalog-actions";
 
@@ -34,6 +35,11 @@ export default async function ServicesPage({
 }) {
   const { tenantSlug } = await params;
   const ctx = await requireTenantContext(tenantSlug);
+  await requireTenantModuleEnabled({
+    tenantId: ctx.tenant.id,
+    tenantSlug: ctx.tenant.slug,
+    moduleCode: "services",
+  });
   const db = getDb();
   const rows = db
     ? await db

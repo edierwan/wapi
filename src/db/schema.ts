@@ -1222,6 +1222,68 @@ export const refBrandVoices = pgTable(
   (t) => ({ codeUq: uniqueIndex("ref_brand_voices_code_uq").on(t.code) }),
 );
 
+export const modules = pgTable(
+  "modules",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    code: text("code").notNull(),
+    name: text("name").notNull(),
+    description: text("description"),
+    status: text("status").notNull().default("active"),
+    sortOrder: integer("sort_order").notNull().default(0),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => ({ codeUq: uniqueIndex("modules_code_uq").on(t.code) }),
+);
+
+export const industryModulePresets = pgTable(
+  "industry_module_presets",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    industryId: uuid("industry_id")
+      .notNull()
+      .references(() => refIndustries.id, { onDelete: "cascade" }),
+    moduleId: uuid("module_id")
+      .notNull()
+      .references(() => modules.id, { onDelete: "cascade" }),
+    enabled: boolean("enabled").notNull().default(true),
+    sortOrder: integer("sort_order").notNull().default(0),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => ({
+    industryModuleUq: uniqueIndex("industry_module_presets_industry_module_uq").on(
+      t.industryId,
+      t.moduleId,
+    ),
+  }),
+);
+
+export const tenantModules = pgTable(
+  "tenant_modules",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    tenantId: uuid("tenant_id")
+      .notNull()
+      .references(() => tenants.id, { onDelete: "cascade" }),
+    moduleId: uuid("module_id")
+      .notNull()
+      .references(() => modules.id, { onDelete: "cascade" }),
+    enabled: boolean("enabled").notNull().default(true),
+    source: text("source").notNull().default("preset"),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => ({
+    tenantModuleUq: uniqueIndex("tenant_modules_tenant_module_uq").on(
+      t.tenantId,
+      t.moduleId,
+    ),
+    byTenant: index("tenant_modules_tenant_idx").on(t.tenantId),
+  }),
+);
+
 /* ────────────────────────────────────────────────────────────── */
 /*  PHASE 5 — Contacts + Business Memory + AI Readiness            */
 /* ────────────────────────────────────────────────────────────── */
@@ -1597,6 +1659,9 @@ export type RefTimezone = typeof refTimezones.$inferSelect;
 export type RefIndustry = typeof refIndustries.$inferSelect;
 export type RefBusinessNature = typeof refBusinessNatures.$inferSelect;
 export type RefBrandVoice = typeof refBrandVoices.$inferSelect;
+export type Module = typeof modules.$inferSelect;
+export type IndustryModulePreset = typeof industryModulePresets.$inferSelect;
+export type TenantModule = typeof tenantModules.$inferSelect;
 export type Contact = typeof contacts.$inferSelect;
 export type ContactTag = typeof contactTags.$inferSelect;
 export type BusinessMemoryItem = typeof businessMemoryItems.$inferSelect;

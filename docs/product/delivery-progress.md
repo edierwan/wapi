@@ -1,6 +1,6 @@
 # WAPI Delivery Progress
 
-Last updated: 2026-04-27 (auth UX + WhatsApp password reset shipped to develop+main; 0005+0006 applied to wapi.dev and wapi DBs; tenant sidebar navigation shipped)
+Last updated: 2026-04-28 (AI-first onboarding simplification + dynamic tenant modules implemented locally; migration 0007 generated)
 
 ## Primary delivery ledger
 
@@ -12,6 +12,7 @@ Last updated: 2026-04-27 (auth UX + WhatsApp password reset shipped to develop+m
 
 ## Current status
 
+- **AI-first onboarding simplification + dynamic tenant modules are now implemented locally**: onboarding now asks only for industry, country, optional support email, and optional website; country defaults remain auto-filled with optional advanced overrides; business nature and initial AI tone are inferred server-side. New schema/model slice: `modules`, `industry_module_presets`, and `tenant_modules`. Onboarding syncs tenant modules from the industry preset, tenant layout now filters the sidebar from enabled modules, and `/t/{slug}/settings/modules` lets owners/admins override those defaults. The first hard route guards now protect `/products` and `/services` when those modules are disabled.
 - **Shared S3 `wapi-app` identity provisioned and verified end-to-end on 2026-04-27**: a least-privilege identity scoped to `Read|Write|List|Tagging:wapi-assets` was added to `seaweed-s3` per §5.1 of the shared doc. Bucket `wapi-assets` was created. PUT / GET (sha-256 byte-for-byte) / LIST / DEL all pass with the new key, and cross-bucket isolation is confirmed (`AccessDenied` on `news-media` / `myfiles` / `test-bucket`). Access key + secret are stored in operator-only files at `/home/deploy/.secrets/wapi-s3-{access,secret}key`. Wiring those into WAPI's Coolify environment is the only remaining manual step before WAPI talks to live storage.
 - **WAPI storage server module shipped (`src/server/storage.ts`)**: dynamically imports `@aws-sdk/client-s3` so the module loads safely even when not configured; `storageEnabled()` reflects env presence. Helpers: `buildTenantPrefix`, `buildTenantObjectKey` (whitelisted categories + path-traversal rejection), `initializeTenantStorage` (idempotent `_meta/storage.json` marker), `getTenantStorageSummary`, `listTenantStorageObjects`, `deleteTenantStoragePrefix` (paginated; refuses without matching `confirmTenantId`; production-blocked unless `WAPI_ALLOW_STORAGE_PURGE_IN_PRODUCTION=true`). Public config helper exposes endpoint/bucket/region and an access-key prefix only — never the secret.
 - **`/admin/storage` admin module shipped**: lists tenants, shows DB row count + size from `storage_objects`, live S3 init status (`_meta/storage.json` presence + version + sample object count), and keeps the technical backend view in the system-admin surface. Added to admin nav (`_nav.ts`).

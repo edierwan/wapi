@@ -4,12 +4,11 @@
 
 ## Positioning (one-liner)
 
-**WAPI is a WhatsApp CRM + AI Memory + Follow-up Automation platform for SMEs.**
-Not a blast tool. Not a CRM bolt-on. A tenant-aware SaaS where SMEs
-connect WhatsApp, teach the system about their business, generate and
-approve campaigns, send safely, manage replies, remember customers,
-detect hot leads, and automate follow-up — with AI as the default
-co-pilot, not the autopilot.
+**WAPI is an AI agent workspace for SMEs running sales and support on WhatsApp.**
+Not a blast tool. Not a form-heavy CRM bolt-on. A tenant-aware SaaS where SMEs
+connect WhatsApp, teach the system the minimum needed about their business,
+let AI draft grounded work immediately, then deepen memory, catalog, and
+automation over time.
 
 ## Differentiation statement
 
@@ -20,9 +19,9 @@ co-pilot, not the autopilot.
 
 ## Product message
 
-> **WAPI gives every business an AI WhatsApp assistant that remembers
-> customers, understands previous conversations, and follows up
-> automatically.**
+> **WAPI gives every business an AI WhatsApp assistant that can start useful
+> work fast, remember customers, understand previous conversations, and follow
+> up with context.**
 
 ## Who it is for
 
@@ -40,7 +39,7 @@ training centres, retail shops, service contractors.
 In one dashboard, a tenant can:
 
 1. **Connect** one or more WhatsApp numbers (Baileys today, Cloud API later).
-2. **Teach WAPI about their business** — business profile, products, services, prices, FAQ, tone, policies ("Business Brain").
+2. **Teach WAPI the essentials first** — industry, country, support channels, then later products, services, FAQ, tone, and policies ("Business Brain").
 3. **Generate campaigns** with AI using that brain.
 4. **Approve + schedule** safely (human-in-the-loop).
 5. **Send through a safe queue** with anti-ban controls.

@@ -7,6 +7,11 @@ Focus: keep the foundation SAP-material-master-grade, but SME-simple.
 
 Drives onboarding branching and AI context.
 
+Current onboarding rule: the initial setup is intentionally minimal.
+Users choose industry and country, optionally add support email and website,
+and WAPI infers the starting `business_nature`, currency, timezone, fallback
+language, and default AI tone. Fine-tuning still happens later in Settings.
+
 ### `tenant_business_profiles`
 
 - `id` uuid pk
@@ -24,8 +29,9 @@ Drives onboarding branching and AI context.
 - `website_url` text
 - `created_at`, `updated_at`
 
-The `business_nature` value gates which setup tiles appear during
-onboarding (products, services, bookings, lead capture, etc.).
+The `business_nature` value is now primarily an inferred routing signal for
+workspace modules and future setup suggestions rather than a mandatory user
+decision in the first-run flow.
 
 ## Product master
 

@@ -21,6 +21,7 @@ export type TenantNavItem = {
   /** Path suffix appended to /t/{slug}. Empty string is the workspace root. */
   path: string;
   Icon: LucideIcon;
+  moduleCode?: string;
   soon?: boolean;
   /**
    * Additional URL path segments (suffix after /t/{slug}) that should also
@@ -44,12 +45,19 @@ export const TENANT_NAV_SECTIONS: TenantNavSection[] = [
   {
     label: "Communication",
     items: [
-      { key: "WhatsApp", label: "WhatsApp", path: "/whatsapp", Icon: Smartphone },
+      {
+        key: "WhatsApp",
+        label: "WhatsApp",
+        path: "/whatsapp",
+        Icon: Smartphone,
+        moduleCode: "whatsapp",
+      },
       {
         key: "Inbox",
         label: "Inbox",
         path: "/inbox",
         Icon: Inbox,
+        moduleCode: "contacts",
         matchPrefixes: ["/inbox/"],
       },
       {
@@ -57,6 +65,7 @@ export const TENANT_NAV_SECTIONS: TenantNavSection[] = [
         label: "Contacts",
         path: "/contacts",
         Icon: Users,
+        moduleCode: "contacts",
         matchPrefixes: ["/contacts/"],
       },
     ],
@@ -64,19 +73,38 @@ export const TENANT_NAV_SECTIONS: TenantNavSection[] = [
   {
     label: "Catalog",
     items: [
-      { key: "Products", label: "Products", path: "/products", Icon: Package },
-      { key: "Services", label: "Services", path: "/services", Icon: Wrench },
+      {
+        key: "Products",
+        label: "Products",
+        path: "/products",
+        Icon: Package,
+        moduleCode: "products",
+      },
+      {
+        key: "Services",
+        label: "Services",
+        path: "/services",
+        Icon: Wrench,
+        moduleCode: "services",
+      },
     ],
   },
   {
     label: "AI & Growth",
     items: [
-      { key: "Brain", label: "Brain", path: "/brain", Icon: Brain },
+      {
+        key: "Brain",
+        label: "Brain",
+        path: "/brain",
+        Icon: Brain,
+        moduleCode: "brain",
+      },
       {
         key: "Campaigns",
         label: "Campaigns",
         path: "/campaigns",
         Icon: MessagesSquare,
+        moduleCode: "campaigns",
         matchPrefixes: ["/campaigns/", "/followups", "/followups/"],
       },
       {
@@ -84,6 +112,7 @@ export const TENANT_NAV_SECTIONS: TenantNavSection[] = [
         label: "AI",
         path: "/ai/draft",
         Icon: Sparkles,
+        moduleCode: "ai_assistant",
         matchPrefixes: ["/ai/", "/ai"],
       },
       {
@@ -91,6 +120,7 @@ export const TENANT_NAV_SECTIONS: TenantNavSection[] = [
         label: "Analytics",
         path: "/analytics",
         Icon: BarChart3,
+        moduleCode: "analytics",
         soon: true,
       },
     ],
@@ -111,9 +141,24 @@ export const TENANT_NAV_SECTIONS: TenantNavSection[] = [
         path: "/settings/storage",
         Icon: Database,
       },
+      {
+        key: "Modules",
+        label: "Modules",
+        path: "/settings/modules",
+        Icon: Settings,
+      },
     ],
   },
 ];
+
+export function filterTenantNavSections(enabledModuleCodes: string[]) {
+  const enabled = new Set(enabledModuleCodes);
+
+  return TENANT_NAV_SECTIONS.map((section) => ({
+    ...section,
+    items: section.items.filter((item) => !item.moduleCode || enabled.has(item.moduleCode)),
+  })).filter((section) => section.items.length > 0);
+}
 
 /**
  * Determine if a given pathname (e.g. /t/acme/products/123) is currently

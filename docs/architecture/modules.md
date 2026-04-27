@@ -3,6 +3,16 @@
 Top-level modules and how they relate. Each module has its own doc for
 deeper schema.
 
+The first dynamic-module slice is now live in the app model:
+
+- `modules` is the global catalog of tenant-visible workspace modules.
+- `industry_module_presets` maps an industry starter pack to default module visibility.
+- `tenant_modules` stores each workspace override and drives the tenant sidebar.
+
+Implementation rule: route labels, icons, and matchers still live in code,
+but visibility is data-driven from `tenant_modules`. This keeps UI metadata
+local to the app while making tenant workspaces configurable.
+
 ```
 ┌─────────────── Tenant / Workspace ────────────────┐
 │  tenants · tenant_members · tenant_settings       │
@@ -49,6 +59,37 @@ deeper schema.
 | N. Audit / Compliance | Audit logs, consent, data export | 8 | [security.md](./security.md#audit--compliance) |
 | O. Reporting / KPI | Tenant + admin KPI views | 8 | — (Phase 8) |
 | P. Customer Memory Core | Tenant knowledge + customer memory + conversation memory + follow-up context | 8+, deepen later | [customer-memory-core.md](./customer-memory-core.md) |
+
+## Dynamic workspace modules
+
+Current shipped module codes:
+
+- `whatsapp`
+- `contacts`
+- `products`
+- `services`
+- `brain`
+- `campaigns`
+- `ai_assistant`
+- `analytics` (cataloged, not enabled by presets yet)
+
+Preset source of truth:
+
+- `industry_module_presets` is keyed by `ref_industries.code`
+- onboarding writes the business profile first, then syncs `tenant_modules`
+- existing tenants are lazily backfilled when the tenant layout or module settings page loads
+
+Manual override rule:
+
+- preset-driven rows use `tenant_modules.source='preset'`
+- any toggle from Settings → Modules flips the row to `source='manual'`
+- later industry changes only auto-update rows still owned by the preset source
+
+### Sidebar behavior
+
+- Overview and Settings stay always visible.
+- Module-backed links appear only when their `tenant_modules.enabled` value is true.
+- The first guarded routes are `Products` and `Services`; more routes can adopt the same guard incrementally.
 
 ## Transactional pattern
 

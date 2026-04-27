@@ -6,6 +6,9 @@ What makes WAPI different from generic WhatsApp blast tools.
 
 - Sign-up flow starts with **business WhatsApp number**, not a form.
 - System creates a tenant/workspace from the phone onboarding flow.
+- First-run business setup is now intentionally short: industry, country,
+  optional support email, optional website. WAPI infers business type,
+  language defaults, and starting tone instead of demanding a long setup wizard.
 - Phone is **never** a primary key. We keep:
   - `tenants.id` as UUID
   - `tenants.primary_phone` (business owner phone)
@@ -131,14 +134,17 @@ session health score, per-number daily cap.
 
 ### 11. Smart Business Setup Wizard
 
-Signup → first useful campaign in 5–10 minutes.
+Signup → first useful AI-assisted action in minutes.
 
-7 steps: business nature → profile → WhatsApp → products/services
-→ business memory (FAQ, hours, payment, policy) → first campaign goal
-→ AI-generated first-campaign draft.
+Current rule:
 
-The user is never dropped on an empty dashboard. Each step is skippable
-but impacts the **AI Readiness Score** (#12). See [modules.md](../architecture/modules.md) §Onboarding.
+- onboarding asks only for industry + country + two optional contact fields
+- WAPI infers business type and default AI configuration
+- workspace modules appear from the industry preset automatically
+- deeper setup happens inside the workspace instead of inside a long blocking wizard
+
+The user is never dropped into a dead-end empty dashboard, but we also do not
+force them through a 7-step questionnaire before the first useful screen.
 
 ### 12. AI Readiness Score
 
@@ -147,13 +153,16 @@ awareness that AI quality depends on data quality.
 
 Checklist:
 - business profile complete
-- default language / tone set
 - at least one product or service
 - ≥ 5 FAQ entries
 - business hours set
 - payment method set
 - WhatsApp account connected
 - AI provider configured
+
+Important onboarding change: missing explicit language or brand-voice choices
+must not penalize readiness. The score should reward real grounding data, not
+extra configuration ceremony.
 
 UI: overall % + missing items + one recommended next action. CTA
 copy: "Complete your Business Brain to improve AI accuracy."
