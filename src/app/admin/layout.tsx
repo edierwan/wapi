@@ -6,12 +6,12 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { AdminSidebar } from "@/components/admin/admin-sidebar";
-import { getCurrentUser } from "@/server/auth";
+import { requireCurrentUser } from "@/server/auth";
 import {
   getUserSystemRoleCodes,
   userHasSystemPermission,
 } from "@/server/permissions";
-import { signOutAction } from "@/app/login/actions";
+import { SignOutButton } from "@/components/auth/sign-out-button";
 import { appConfig } from "@/config/app";
 import { env } from "@/lib/env";
 
@@ -40,8 +40,7 @@ export default async function AdminLayout({
 }: {
   children: React.ReactNode;
 }) {
-  const me = await getCurrentUser().catch(() => null);
-  if (!me) redirect("/login?next=/admin");
+  const me = await requireCurrentUser("/login");
 
   const canAccess = await userHasSystemPermission(me.id, "system.admin.access");
   if (!canAccess) {
@@ -79,11 +78,7 @@ export default async function AdminLayout({
               {me.email}
             </span>
             <ThemeToggle />
-            <form action={signOutAction}>
-              <Button variant="ghost" size="sm" type="submit">
-                Sign out
-              </Button>
-            </form>
+            <SignOutButton variant="ghost" size="sm" />
           </div>
         </div>
       </header>

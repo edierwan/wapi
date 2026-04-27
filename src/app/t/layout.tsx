@@ -1,5 +1,5 @@
 import { redirect } from "next/navigation";
-import { getCurrentUser } from "@/server/auth";
+import { requireCurrentUser } from "@/server/auth";
 import { Navbar } from "@/components/layout/navbar";
 import { Footer } from "@/components/layout/footer";
 
@@ -10,8 +10,7 @@ export default async function TenantRootLayout({
 }: {
   children: React.ReactNode;
 }) {
-  const user = await getCurrentUser().catch(() => null);
-  if (!user) redirect("/login");
+  const user = await requireCurrentUser("/login");
   return (
     <div className="flex min-h-dvh flex-col">
       <Navbar
