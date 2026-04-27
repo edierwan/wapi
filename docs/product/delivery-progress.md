@@ -1,6 +1,6 @@
 # WAPI Delivery Progress
 
-Last updated: 2026-04-27 (S3 wapi-app identity + WAPI storage module + admin/storage UI + tenant storage settings + cascade-delete tranche shipped locally)
+Last updated: 2026-04-27 (auth UX + WhatsApp password reset shipped to develop+main; 0005+0006 applied to wapi.dev and wapi DBs; tenant sidebar navigation shipped)
 
 ## Primary delivery ledger
 
@@ -51,7 +51,11 @@ Last updated: 2026-04-27 (S3 wapi-app identity + WAPI storage module + admin/sto
 - **WhatsApp password reset flow is now shipped locally**: `/forgot-password` -> `/forgot-password/verify` -> `/reset-password/new` reuses `phone_verifications` with `purpose='password_reset'`, sends the reset code to the user’s registered phone, and completes the password change through a server-side `password_reset_sessions` record instead of client-only state.
 - `drizzle/0006_bizarre_sebastian_shaw.sql` was generated for the new `password_reset_sessions` table.
 - Validation for the auth tranche passed locally: `pnpm test:unit`, `pnpm typecheck`, `pnpm build`, `pnpm lint`.
-- Dev/prod DB migration and branch promotion are still pending from the current working tree.
+- 2026-04-27: branch promotion and DB migration are now complete. Auth + Dify tranches landed on `develop` (`e8b426d`) and `main` (`26da43f`). `drizzle/0005_kind_maggott.sql` and `drizzle/0006_bizarre_sebastian_shaw.sql` were applied directly to `wapi.dev` and `wapi` Postgres databases via `psql` against `getouch-postgres`. `tenant_ai_settings` now exposes the additive Dify mapping columns and `password_reset_sessions` exists in both DBs. Note: the `__drizzle_migrations` tracking table was already empty before this round (migrations 0000-0004 were applied without journaling); future `drizzle-kit migrate` runs will need a one-shot journal repair, this is documented as a known issue and is not blocking app boot.
+
+## Request 17 — Tenant Sidebar Navigation
+
+- 2026-04-27: tenant workspace nav under `/t/[tenantSlug]` is now a left sidebar instead of a horizontal top bar. New files: `src/app/t/[tenantSlug]/layout.tsx`, `src/components/tenant/tenant-sidebar.tsx`, `src/components/tenant/tenant-nav-items.ts`. The legacy `TenantSubNav` is now a no-op stub (returns `null`) so existing page imports keep compiling. Sidebar sections: Workspace, Communication, Catalog, AI & Growth, Settings (includes a Storage item pointing to `/settings/storage`). Active state covers nested detail routes (contact / campaign / inbox conversation pages highlight their parent). Mobile/tablet collapse to a drawer with a floating menu button. Admin sidebar at `/admin` is unchanged. Validation: `pnpm test:unit` (16/16), `pnpm typecheck`, `pnpm build` all clean. See [docs/request/17-tenant-sidebar-navigation.md](../request/17-tenant-sidebar-navigation.md).
 - Request 05 was re-audited against the local gateway source. `getouch.co/services/wa/server.mjs` still runs one module-scoped socket and one shared auth directory, so true multi-tenant WhatsApp runtime remains blocked at the gateway layer.
 
 ## Dify multi-tenant architecture decision
