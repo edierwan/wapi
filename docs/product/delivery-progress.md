@@ -1,6 +1,6 @@
 # WAPI Delivery Progress
 
-Last updated: 2026-04-26 (shared S3 object storage verified end-to-end on getouch.co; WAPI storage doc realigned to SeaweedFS)
+Last updated: 2026-04-27 (S3 wapi-app identity + WAPI storage module + admin/storage UI + tenant storage settings + cascade-delete tranche shipped locally)
 
 ## Primary delivery ledger
 
@@ -12,10 +12,19 @@ Last updated: 2026-04-26 (shared S3 object storage verified end-to-end on getouc
 
 ## Current status
 
-- **Shared S3 object storage (SeaweedFS) verified end-to-end on 2026-04-26**: Put / Get (SHA-256 byte-for-byte) / List / Delete / RemoveBucket all pass against `http://seaweed-s3:8333` via the `admin` identity. External anonymous probe correctly returns 403. Authoritative deployment doc lives at `getouch.co/docs/s3-object-storage-2026-04-26.md`. WAPI's `docs/architecture/storage.md` now references it and is corrected (the backend is SeaweedFS, not MinIO; original doc was outdated).
-- **Shared S3 storage write path was broken before today's audit**: `seaweed-volume` was running with `-max=10` and all 10 slots were allocated, so any new bucket / collection write returned `InternalError`. Raised to `-max=200` (≈6 TB headroom) on the live host and mirrored into the workspace `compose.yaml`. Existing buckets (`myfiles`, `news-media`, `test-bucket`) untouched. This is shared infra so it benefits news.getouch.co and any future consumer too, not just WAPI.
-- **WAPI is NOT yet wired to production S3**: a least-privilege `wapi-app` identity scoped to `Read|Write|List|Tagging:wapi-assets` must be provisioned by the operator following §5.1 of the shared doc before WAPI can be pointed at the live endpoint. WAPI must never be issued the SeaweedFS `admin` key.
-- WAPI `storage_objects` table (Drizzle, migration `0001_friendly_doomsday.sql`) is unchanged and remains the right shape for tenant-prefixed object metadata; no schema change required for the storage realignment.
+- **Shared S3 `wapi-app` identity provisioned and verified end-to-end on 2026-04-27**: a least-privilege identity scoped to `Read|Write|List|Tagging:wapi-assets` was added to `seaweed-s3` per §5.1 of the shared doc. Bucket `wapi-assets` was created. PUT / GET (sha-256 byte-for-byte) / LIST / DEL all pass with the new key, and cross-bucket isolation is confirmed (`AccessDenied` on `news-media` / `myfiles` / `test-bucket`). Access key + secret are stored in operator-only files at `/home/deploy/.secrets/wapi-s3-{access,secret}key`. Wiring those into WAPI's Coolify environment is the only remaining manual step before WAPI talks to live storage.
+- **WAPI storage server module shipped (`src/server/storage.ts`)**: dynamically imports `@aws-sdk/client-s3` so the module loads safely even when not configured; `storageEnabled()` reflects env presence. Helpers: `buildTenantPrefix`, `buildTenantObjectKey` (whitelisted categories + path-traversal rejection), `initializeTenantStorage` (idempotent `_meta/storage.json` marker), `getTenantStorageSummary`, `listTenantStorageObjects`, `deleteTenantStoragePrefix` (paginated; refuses without matching `confirmTenantId`; production-blocked unless `WAPI_ALLOW_STORAGE_PURGE_IN_PRODUCTION=true`). Public config helper exposes endpoint/bucket/region and an access-key prefix only — never the secret.
+- **`/admin/storage` admin module shipped**: lists tenants, shows DB row count + size from `storage_objects`, live S3 init status (`_meta/storage.json` presence + version + sample object count), and renders a "not configured" banner when env is unset. Added to admin nav (`_nav.ts`).
+- **`/t/{tenantSlug}/settings/storage` tenant page shipped**: renders bucket name, the tenant's own prefix, init status, the whitelisted category list, and a privacy/deletion summary. No raw secrets surface.
+- **`/admin/users` cascade-delete enhancement shipped**: the same guarded delete flow now exposes two opt-in checkboxes alongside the typed-email confirmation — "Also delete workspaces where this user is the sole owner" and "Also purge object storage prefixes". The latter is only enabled when the former is checked, requires storage to be configured, and is blocked in production unless `WAPI_ALLOW_STORAGE_PURGE_IN_PRODUCTION=true`. Sole-owner detection skips tenants that still have another active owner. Storage purge runs before the DB transaction, best-effort per tenant, and failures are reported in the success notice without blocking DB cleanup. Full semantics are documented in `docs/architecture/admin-console.md` under "User cascade delete".
+- **Portal `/admin/object-storage` page shipped on getouch.co**: read-only operator dashboard fronting SeaweedFS — live volume health (max/free/active via `seaweed-master:9333/dir/status`), bucket inventory, identity inventory, endpoint list, and the runbook reference. Sidebar entry added under INFRASTRUCTURE in `app/admin/data.ts`.
+- **Documentation realigned (existing files only — no new handoff docs)**:
+  - `getouch.co/docs/s3-object-storage-2026-04-26.md` now records the `wapi-app` provisioning, the new identity table, the cross-bucket isolation result, the operator-only secret-file paths, and a follow-up to rotate the keys (they were briefly visible in tool output during provisioning).
+  - `wapi/docs/architecture/storage.md` now describes the server module surface, the admin/tenant pages, and the post-2026-04-27 identity status.
+  - `wapi/docs/architecture/admin-console.md` documents the user cascade-delete flow (checkbox semantics, sole-owner detection, storage purge production guardrail).
+- **Shared S3 object storage (SeaweedFS) verified end-to-end on 2026-04-26**: Put / Get (SHA-256 byte-for-byte) / List / Delete / RemoveBucket all pass against `http://seaweed-s3:8333` via the `admin` identity. External anonymous probe correctly returns 403. Authoritative deployment doc lives at `getouch.co/docs/s3-object-storage-2026-04-26.md`. WAPI's `docs/architecture/storage.md` references it.
+- **Shared S3 storage write path was broken before today's audit**: `seaweed-volume` was running with `-max=10` and all 10 slots were allocated, so any new bucket / collection write returned `InternalError`. Raised to `-max=200` (≈6 TB headroom) on the live host and mirrored into the workspace `compose.yaml`. Existing buckets (`myfiles`, `news-media`, `test-bucket`) untouched.
+- WAPI `storage_objects` table (Drizzle, migration `0001_friendly_doomsday.sql`) is unchanged and remains the right shape for tenant-prefixed object metadata; no schema change required.
 - Public WAPI availability restored for both environments after another Coolify container-name rotation broke the edge proxy targets.
 - `wapi-dev.getouch.co` health is back to `200`.
 - `wapi.getouch.co` health is back to `200`.
@@ -38,6 +47,11 @@ Last updated: 2026-04-26 (shared S3 object storage verified end-to-end on getouc
 - `drizzle/0005_kind_maggott.sql` was generated for the new `tenant_ai_settings` Dify mapping fields.
 - Validation for this tranche passed locally: `pnpm test:unit`, `pnpm typecheck`, `pnpm build`.
 - Remote Dify dataset document upload is still intentionally pending: this tranche prepares tenant-only knowledge packages and tracks configuration/sync status, but does not fake successful remote knowledge writes.
+- **Auth UX login identifier tranche is now shipped locally**: `/login` now accepts registered email or registered phone, keeps the typed identifier after failed password attempts, exposes password show/hide, and adds a `Forgot password?` entrypoint.
+- **WhatsApp password reset flow is now shipped locally**: `/forgot-password` -> `/forgot-password/verify` -> `/reset-password/new` reuses `phone_verifications` with `purpose='password_reset'`, sends the reset code to the user’s registered phone, and completes the password change through a server-side `password_reset_sessions` record instead of client-only state.
+- `drizzle/0006_bizarre_sebastian_shaw.sql` was generated for the new `password_reset_sessions` table.
+- Validation for the auth tranche passed locally: `pnpm test:unit`, `pnpm typecheck`, `pnpm build`, `pnpm lint`.
+- Dev/prod DB migration and branch promotion are still pending from the current working tree.
 - Request 05 was re-audited against the local gateway source. `getouch.co/services/wa/server.mjs` still runs one module-scoped socket and one shared auth directory, so true multi-tenant WhatsApp runtime remains blocked at the gateway layer.
 
 ## Dify multi-tenant architecture decision

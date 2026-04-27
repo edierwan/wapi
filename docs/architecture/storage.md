@@ -43,8 +43,54 @@ service.
 WAPI gets a dedicated least-privilege identity (`wapi-app`) scoped to
 `Read|Write|List|Tagging:wapi-assets` (and `:wapi-public` once Phase 8 lands).
 WAPI never holds the SeaweedFS `admin` key. Provisioning procedure: see
-§5.1 of the shared doc above. Until that identity is provisioned by the
-operator, WAPI must not be pointed at production S3.
+§5.1 of the shared doc above.
+
+**Status (2026-04-27)**: the `wapi-app` identity has been provisioned, the
+`wapi-assets` bucket has been created, and a smoke test using the new
+least-privilege key passed (PUT/GET/LIST/DEL with sha-256 byte-for-byte match;
+cross-bucket access correctly denied). The access key and secret are stored on
+the host at `/home/deploy/.secrets/wapi-s3-{access,secret}key` (mode 600,
+owner `deploy`). Wiring WAPI's Coolify env (`S3_ACCESS_KEY_ID` /
+`S3_SECRET_ACCESS_KEY` / `S3_ENDPOINT` / `S3_BUCKET` / `S3_REGION` /
+`S3_FORCE_PATH_STYLE`) is the remaining manual step before WAPI talks to live
+storage.
+
+## Server module
+
+`src/server/storage.ts` is the only WAPI entry point that talks to S3.
+
+- Loads the AWS SDK via dynamic import so the module is safe to import even
+  when `@aws-sdk/client-s3` is not installed; in that case `storageEnabled()`
+  returns `false` and admin/tenant pages render a "not configured" state
+  instead of crashing.
+- `storageEnabled()`: true only when all required env vars are present.
+- `getStoragePublicConfig()`: returns a non-secret summary safe to render in
+  admin UI (endpoint, bucket, region, access-key prefix, never the secret).
+- `buildTenantPrefix(tenantId)`: validates tenantId is a UUID and returns
+  `tenants/{tenantId}/`.
+- `buildTenantObjectKey(tenantId, category, entityId, filename)`: enforces a
+  whitelist of categories (`_meta`, `products`, `services`, `media`,
+  `exports`, `imports`, `campaigns`, `messages`) and rejects path traversal in
+  the filename or entityId.
+- `initializeTenantStorage(tenantId, metadata)`: writes / refreshes
+  `tenants/{tenantId}/_meta/storage.json` (idempotent; bumps `version`).
+- `getTenantStorageSummary(tenantId)`: live S3 head — initialized flag,
+  object count sample, version.
+- `listTenantStorageObjects(tenantId, opts)`: best-effort first-page list.
+- `deleteTenantStoragePrefix(tenantId, opts)`: hard-destructive prefix purge,
+  paginated. Refuses unless the caller passes `confirmTenantId === tenantId`.
+  Production guardrail: refuses to run when `NODE_ENV === "production"`
+  unless `WAPI_ALLOW_STORAGE_PURGE_IN_PRODUCTION=true` is set in env (or the
+  caller passes `allowInProduction: true`).
+
+## Admin and tenant UI
+
+- `/admin/storage` (system admins only): lists all tenants, their prefix,
+  DB row count + size from `storage_objects`, and live S3 init status from
+  `_meta/storage.json`. Renders a "not configured" banner when env is unset.
+- `/t/{tenantSlug}/settings/storage` (tenant members): bucket name, the
+  tenant's own prefix, init status, the whitelisted category list, and a
+  privacy/deletion summary. No raw secrets are rendered anywhere.
 
 ## Schema: `storage_objects`
 

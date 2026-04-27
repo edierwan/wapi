@@ -2,18 +2,21 @@
 
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
-import { and, eq, sql } from "drizzle-orm";
+import { and, eq, ne, sql } from "drizzle-orm";
 import { requireDb } from "@/db/client";
 import {
   pendingRegistrations,
+  passwordResetSessions,
   phoneVerifications,
   roles,
   tenantMembers,
+  tenants,
   userSystemRoles,
   users,
 } from "@/db/schema";
 import { getCurrentUser } from "@/server/auth";
 import { userHasSystemPermission } from "@/server/permissions";
+import { deleteTenantStoragePrefix, storageEnabled } from "@/server/storage";
 
 type AdminTarget = {
   id: string;
@@ -87,6 +90,10 @@ async function cleanupTestingArtifacts(target: AdminTarget) {
         .delete(pendingRegistrations)
         .where(eq(pendingRegistrations.phone, target.phone));
     }
+
+    await tx
+      .delete(passwordResetSessions)
+      .where(eq(passwordResetSessions.userId, target.id));
   });
 }
 
@@ -125,6 +132,10 @@ export async function deleteUserAction(formData: FormData) {
   }
 
   const confirmEmail = String(formData.get("confirmEmail") ?? "").trim().toLowerCase();
+  const alsoDeleteOwnedTenants =
+    String(formData.get("alsoDeleteOwnedTenants") ?? "") === "on";
+  const alsoPurgeStorage =
+    String(formData.get("alsoPurgeStorage") ?? "") === "on";
 
   const target = await loadTarget(userId);
   if (!target) {
@@ -148,8 +159,61 @@ export async function deleteUserAction(formData: FormData) {
     );
   }
 
+  // Storage purge is only meaningful when we are also deleting owned tenants.
+  if (alsoPurgeStorage && !alsoDeleteOwnedTenants) {
+    bounce(
+      "/admin/users",
+      "error",
+      "Object storage purge requires the 'also delete owned workspaces' option.",
+    );
+  }
+
+  // Production guardrail for storage purge.
+  const isProd = (process.env.NODE_ENV ?? "").toLowerCase() === "production";
+  const purgeOverride =
+    (process.env.WAPI_ALLOW_STORAGE_PURGE_IN_PRODUCTION ?? "").toLowerCase() === "true";
+  if (alsoPurgeStorage && isProd && !purgeOverride) {
+    bounce(
+      "/admin/users",
+      "error",
+      "Object storage purge is disabled in production. Set WAPI_ALLOW_STORAGE_PURGE_IN_PRODUCTION=true to override.",
+    );
+  }
+
   const db = requireDb();
 
+  // Identify tenants where this user is the sole active owner.
+  const soleOwnerTenants = alsoDeleteOwnedTenants
+    ? await findSoleOwnerTenants(target.id)
+    : [];
+
+  // Phase 1: storage purge (best-effort, before DB so a failure here does not
+  // leave dangling DB-with-objects state). Each tenant is purged independently
+  // so one failure does not abort the rest.
+  const purgeResults: Array<{ tenantId: string; ok: boolean; reason?: string; deleted?: number }> = [];
+  if (alsoPurgeStorage && storageEnabled() && soleOwnerTenants.length > 0) {
+    for (const t of soleOwnerTenants) {
+      try {
+        const r = await deleteTenantStoragePrefix(t.id, {
+          confirmTenantId: t.id,
+          allowInProduction: purgeOverride,
+        });
+        purgeResults.push(
+          r.ok
+            ? { tenantId: t.id, ok: true, deleted: r.deleted }
+            : { tenantId: t.id, ok: false, reason: r.reason },
+        );
+      } catch (err) {
+        purgeResults.push({
+          tenantId: t.id,
+          ok: false,
+          reason: err instanceof Error ? err.message : "purge_failed",
+        });
+      }
+    }
+  }
+
+  // Phase 2: DB cleanup, all in a single transaction.
   await db.transaction(async (tx) => {
     await tx
       .delete(pendingRegistrations)
@@ -165,12 +229,105 @@ export async function deleteUserAction(formData: FormData) {
         .where(eq(pendingRegistrations.phone, target.phone));
     }
 
+    await tx
+      .delete(passwordResetSessions)
+      .where(eq(passwordResetSessions.userId, target.id));
+
     await tx.delete(tenantMembers).where(eq(tenantMembers.userId, target.id));
+
+    if (alsoDeleteOwnedTenants && soleOwnerTenants.length > 0) {
+      // FK cascade on tenants(id) wipes members, sessions, products, services,
+      // ai configs, storage_objects rows, etc. Object storage purge above
+      // (if enabled) handled the actual S3 prefix.
+      for (const t of soleOwnerTenants) {
+        await tx.delete(tenants).where(eq(tenants.id, t.id));
+      }
+    }
 
     await tx.delete(users).where(eq(users.id, target.id));
   });
 
   revalidatePath("/admin/users");
+  revalidatePath("/admin/tenants");
   revalidatePath("/admin");
-  bounce("/admin/users", "notice", `Deleted user ${target.email}.`);
+
+  const parts: string[] = [`Deleted user ${target.email}.`];
+  if (alsoDeleteOwnedTenants && soleOwnerTenants.length > 0) {
+    parts.push(
+      `Removed ${soleOwnerTenants.length} sole-owner workspace${soleOwnerTenants.length === 1 ? "" : "s"} (${soleOwnerTenants.map((t) => t.slug).join(", ")}).`,
+    );
+  }
+  if (alsoPurgeStorage) {
+    const okCount = purgeResults.filter((r) => r.ok).length;
+    const failed = purgeResults.filter((r) => !r.ok);
+    parts.push(`Storage purge: ${okCount}/${purgeResults.length} ok.`);
+    if (failed.length > 0) {
+      parts.push(
+        `Purge failures: ${failed.map((f) => `${f.tenantId.slice(0, 8)}=${f.reason}`).join(" ")}`,
+      );
+    }
+  }
+  bounce("/admin/users", "notice", parts.join(" "));
+}
+
+/**
+ * Tenants where `userId` is the only currently active owner. Deleting the
+ * user without first transferring ownership would leave these tenants
+ * orphaned, so the cascade flow lets the operator opt to delete them.
+ */
+async function findSoleOwnerTenants(
+  userId: string,
+): Promise<Array<{ id: string; slug: string; name: string }>> {
+  const db = requireDb();
+  const owned = await db
+    .select({
+      id: tenants.id,
+      slug: tenants.slug,
+      name: tenants.name,
+    })
+    .from(tenantMembers)
+    .innerJoin(tenants, eq(tenants.id, tenantMembers.tenantId))
+    .where(
+      and(
+        eq(tenantMembers.userId, userId),
+        eq(tenantMembers.role, "owner"),
+        eq(tenantMembers.status, "active"),
+      ),
+    );
+  if (owned.length === 0) return [];
+  const result: Array<{ id: string; slug: string; name: string }> = [];
+  for (const t of owned) {
+    const otherOwners = await db
+      .select({ id: tenantMembers.id })
+      .from(tenantMembers)
+      .where(
+        and(
+          eq(tenantMembers.tenantId, t.id),
+          eq(tenantMembers.role, "owner"),
+          eq(tenantMembers.status, "active"),
+          ne(tenantMembers.userId, userId),
+        ),
+      )
+      .limit(1);
+    if (otherOwners.length === 0) result.push(t);
+  }
+  return result;
+}
+
+/** Read-only preview helper for the admin UI. Safe to call from server components. */
+export async function previewUserDeletion(userId: string): Promise<{
+  userId: string;
+  soleOwnerTenants: Array<{ id: string; slug: string; name: string }>;
+  storageEnabled: boolean;
+  isProductionPurgeBlocked: boolean;
+}> {
+  const isProd = (process.env.NODE_ENV ?? "").toLowerCase() === "production";
+  const overridden =
+    (process.env.WAPI_ALLOW_STORAGE_PURGE_IN_PRODUCTION ?? "").toLowerCase() === "true";
+  return {
+    userId,
+    soleOwnerTenants: await findSoleOwnerTenants(userId),
+    storageEnabled: storageEnabled(),
+    isProductionPurgeBlocked: isProd && !overridden,
+  };
 }

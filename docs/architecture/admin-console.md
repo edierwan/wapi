@@ -32,7 +32,7 @@ Modeled as rows in a `system_roles` table (separate from tenant
 | `/admin` | overview | KPIs: total tenants, active, trial, MRR, queue lag, error count |
 | `/admin/tenants` | tenants | List, filter, view detail, suspend/resume |
 | `/admin/tenants/[id]` | tenant detail | Members, WA sessions, campaigns, billing |
-| `/admin/users` | users | Global user list, disable account, force logout |
+| `/admin/users` | users | Global user list, disable account, force logout, **cascade-delete with optional sole-owner workspace removal and storage purge** (see "User cascade delete" below) |
 | `/admin/wa-sessions` | WhatsApp | Live session list, status, reset, QR |
 | `/admin/jobs` | queues | BullMQ dashboard (read), retry dead jobs |
 | `/admin/ai` | AI | AI usage by tenant, provider health, generations log |
@@ -40,7 +40,53 @@ Modeled as rows in a `system_roles` table (separate from tenant
 | `/admin/audit` | audit | Filter audit logs across tenants |
 | `/admin/webhooks` | webhooks | Webhook delivery log, retry failed |
 | `/admin/system-health` | health | DB, Redis, MinIO, Dify, Baileys gateway up/down + latency |
+| `/admin/storage` | storage | Bucket health, per-tenant prefix init, DB usage; backed by SeaweedFS shared infra |
 | `/admin/abuse` | risk | Flag spammy tenants, mass opt-out spikes, suspect numbers |
+
+## User cascade delete (development test cleanup)
+
+The `/admin/users` page exposes a single guarded delete flow whose cleanup
+scope is controlled by two checkboxes presented next to the typed-email
+confirmation. The action lives in
+`src/app/admin/users/actions.ts::deleteUserAction`.
+
+Always-on (every successful delete):
+
+- Match `confirmEmail` exactly (case-insensitive) against the target's email.
+- Refuse self-delete (`session.userId === target.id`).
+- Refuse `isSystemAdmin` and protected-role users (`scopeType='system'`).
+- Inside one DB transaction: clear `pending_registrations` (by email and by
+  phone), clear `phone_verifications` for the target's phone, clear
+  `password_reset_sessions`, drop `tenant_members` for the target, then
+  delete `users`.
+
+Optional checkbox: **"Also delete workspaces where this user is the sole
+owner"**
+
+- Looks up tenants where this user is `role='owner', status='active'` AND no
+  other active owner exists. Tenants with another active owner are left in
+  place (the user simply loses membership).
+- Inside the same transaction, deletes those tenants. The schema's foreign
+  keys cascade the rest: `tenant_members`, `connected_accounts`,
+  `whatsapp_sessions`, products, services, `ai_provider_configs`,
+  `tenant_settings`, `api_keys`, `webhook_endpoints`, `storage_objects`
+  rows, etc.
+
+Optional checkbox: **"Also purge object storage prefixes"**
+
+- Only available when the previous checkbox is also ticked.
+- Calls `deleteTenantStoragePrefix(tenantId)` for each sole-owner tenant
+  before the DB transaction runs (best-effort; failures are reported per
+  tenant and do not block the DB delete).
+- Disabled in the UI when storage is not configured.
+- **Production guardrail**: refuses to run when `NODE_ENV === "production"`
+  unless `WAPI_ALLOW_STORAGE_PURGE_IN_PRODUCTION=true` is set in the
+  environment. This is intended for development test workspaces (where the
+  same operator email is registered/de-registered repeatedly during QA).
+
+The notice banner after a successful delete summarises which optional steps
+ran, the count of sole-owner workspaces removed, and a per-tenant storage
+purge summary.
 
 ## KPI surfaces
 

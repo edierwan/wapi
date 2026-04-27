@@ -22,6 +22,7 @@
     "worker:followups:loop": "WAPI_WORKER_MODE=loop tsx scripts/follow-up-executor.ts"
   },
   "dependencies": {
+    "@aws-sdk/client-s3": "^3.1037.0",
     "@radix-ui/react-accordion": "^1.2.2",
     "@radix-ui/react-slot": "^1.1.1",
     "bcryptjs": "^3.0.3",
