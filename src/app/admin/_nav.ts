@@ -3,6 +3,7 @@ import {
   Building2,
   CreditCard,
   Cpu,
+  HardDrive,
   LayoutDashboard,
   ListChecks,
   ScrollText,
@@ -90,6 +91,13 @@ export const ADMIN_NAV: AdminNavItem[] = [
     label: "System Health",
     icon: Activity,
     description: "DB, gateway, worker, realtime.",
+    status: "ready",
+  },
+  {
+    href: "/admin/storage",
+    label: "Object Storage",
+    icon: HardDrive,
+    description: "Tenant prefixes, bucket usage, init status (SeaweedFS).",
     status: "ready",
   },
   {

@@ -12,6 +12,7 @@ import {
 import { requireDb } from "@/db/client";
 import { roles, tenantMembers, tenants, userSystemRoles, users } from "@/db/schema";
 import { getCurrentUser } from "@/server/auth";
+import { storageEnabled } from "@/server/storage";
 import { deleteUserAction, resetUserForTestingAction } from "./actions";
 
 export const dynamic = "force-dynamic";
@@ -94,6 +95,11 @@ export default async function Page({
   const withMemberships = userRows.filter(
     (user) => (membershipsByUser.get(user.id)?.length ?? 0) > 0,
   ).length;
+
+  const storageActive = storageEnabled();
+  const isProductionPurgeBlocked =
+    (process.env.NODE_ENV ?? "").toLowerCase() === "production" &&
+    (process.env.WAPI_ALLOW_STORAGE_PURGE_IN_PRODUCTION ?? "").toLowerCase() !== "true";
 
   return (
     <section className="space-y-6">
@@ -250,14 +256,14 @@ export default async function Page({
                           {user.createdAt.toLocaleString()}
                         </td>
                         <td className="px-3 py-3 text-right">
-                          <div className="flex min-w-64 flex-col items-stretch gap-2">
+                          <div className="flex min-w-72 flex-col items-stretch gap-2">
                             <form action={resetUserForTestingAction}>
                               <input type="hidden" name="userId" value={user.id} />
                               <Button type="submit" variant="ghost" size="sm" className="w-full">
                                 Clear registration artifacts
                               </Button>
                             </form>
-                            <form action={deleteUserAction} className="space-y-2">
+                            <form action={deleteUserAction} className="space-y-2 rounded-md border border-red-500/20 bg-red-500/5 p-2">
                               <input type="hidden" name="userId" value={user.id} />
                               <input
                                 type="text"
@@ -266,8 +272,40 @@ export default async function Page({
                                 disabled={isCurrentUser || isProtectedAdmin}
                                 className="w-full rounded-md border border-[var(--border)] bg-[var(--background)] px-3 py-2 text-xs"
                               />
+                              <label className="flex items-start gap-2 text-left text-[11px] text-[var(--muted-foreground)]">
+                                <input
+                                  type="checkbox"
+                                  name="alsoDeleteOwnedTenants"
+                                  disabled={isCurrentUser || isProtectedAdmin}
+                                  className="mt-0.5"
+                                />
+                                <span>
+                                  Also delete workspaces where this user is the
+                                  sole owner (cascades to all tenant data).
+                                </span>
+                              </label>
+                              <label className="flex items-start gap-2 text-left text-[11px] text-[var(--muted-foreground)]">
+                                <input
+                                  type="checkbox"
+                                  name="alsoPurgeStorage"
+                                  disabled={
+                                    isCurrentUser || isProtectedAdmin || !storageActive
+                                  }
+                                  className="mt-0.5"
+                                />
+                                <span>
+                                  Also purge object-storage prefixes for those
+                                  workspaces.{" "}
+                                  {!storageActive
+                                    ? "(Storage not configured.)"
+                                    : isProductionPurgeBlocked
+                                      ? "(Disabled in production.)"
+                                      : "Dev-only by default."}
+                                </span>
+                              </label>
                               <p className="text-left text-[11px] text-[var(--muted-foreground)]">
-                                Clears pending registration and OTP rows; delete also removes memberships and the user record.
+                                Without checkboxes: clears OTPs/pending rows,
+                                drops memberships, deletes the user only.
                               </p>
                               <Button
                                 type="submit"
