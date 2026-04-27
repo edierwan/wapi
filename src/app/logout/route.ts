@@ -15,6 +15,9 @@ export async function POST(request: Request) {
 async function loginUrl(request: Request) {
   const hdrs = await headers();
   const host = hdrs.get("x-forwarded-host") ?? hdrs.get("host");
-  const proto = hdrs.get("x-forwarded-proto") ?? "https";
+  const proto =
+    process.env.NODE_ENV === "production"
+      ? "https"
+      : hdrs.get("x-forwarded-proto") ?? new URL(request.url).protocol.replace(":", "");
   return host ? new URL("/login", `${proto}://${host}`) : new URL("/login", request.url);
 }
