@@ -23,12 +23,12 @@ export default async function RegisterPage() {
   const closed = isProd && !publicRegEnabled;
 
   return (
-    <div className="relative grid min-h-dvh place-items-center px-4 py-10">
+    <div className="relative grid min-h-dvh place-items-center px-4 py-8 sm:py-10">
       <div aria-hidden className="pointer-events-none absolute inset-0 -z-10">
         <div className="absolute inset-x-0 top-[-20%] h-[420px] bg-[radial-gradient(ellipse_at_center,color-mix(in_oklch,var(--primary)_12%,transparent),transparent_60%)]" />
       </div>
 
-      <div className="w-full max-w-xl">
+      <div className="w-full max-w-2xl">
         <div className="mb-6 flex items-center justify-between">
           <Logo />
           <Link
@@ -39,7 +39,7 @@ export default async function RegisterPage() {
           </Link>
         </div>
 
-        <div className="rounded-xl border border-[var(--border)] bg-[var(--card)] p-8 shadow-sm">
+        <div className="rounded-xl border border-[var(--border)] bg-[var(--card)] p-6 shadow-sm sm:p-8">
           <h1 className="text-2xl font-semibold tracking-tight">
             Create your {appConfig.name} workspace
           </h1>

@@ -23,7 +23,7 @@ export function Navbar({
 
   return (
     <header className="sticky top-0 z-50 w-full border-b border-[var(--border)]/60 bg-[color-mix(in_oklch,var(--background)_85%,transparent)] backdrop-blur">
-      <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
+      <div className="mx-auto flex h-16 max-w-[1440px] items-center justify-between px-4 sm:px-6 lg:px-8 xl:px-10">
         <Logo />
 
         {showMarketingLinks && (
@@ -80,7 +80,7 @@ export function Navbar({
           open ? "block" : "hidden",
         )}
       >
-        <div className="mx-auto flex max-w-7xl flex-col gap-1 px-4 py-3 sm:px-6">
+        <div className="mx-auto flex max-w-[1440px] flex-col gap-1 px-4 py-3 sm:px-6 xl:px-10">
           {showMarketingLinks &&
             nav.primary.map((item) => (
               <Link

@@ -16,7 +16,7 @@ export default async function TenantWorkspaceLayout({
   const enabledModules = await getEnabledTenantModuleCodes(ctx.tenant.id);
 
   return (
-    <div className="flex w-full">
+    <div className="flex min-h-[100dvh] w-full overflow-x-hidden bg-[var(--background)]">
       <TenantSidebar
         slug={tenantSlug}
         displayName={ctx.tenant.name?.trim() || ctx.tenant.slug}

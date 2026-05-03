@@ -27,7 +27,7 @@ export default async function DashboardPage() {
   }
 
   return (
-    <section className="mx-auto max-w-6xl px-4 py-14 sm:px-6 lg:px-8">
+    <section className="mx-auto max-w-[1440px] px-4 py-10 sm:px-6 lg:px-8 xl:px-10">
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div>
           <p className="text-sm text-[var(--muted-foreground)]">
@@ -44,7 +44,7 @@ export default async function DashboardPage() {
         <SignOutButton variant="ghost" size="sm" />
       </div>
 
-      <div className="mt-10 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+      <div className="mt-10 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         {memberships.map(({ tenant, role }) => (
           <Link key={tenant.id} href={`/t/${tenant.slug}`} className="group">
             <Card className="h-full transition-all hover:-translate-y-0.5 hover:shadow-md">

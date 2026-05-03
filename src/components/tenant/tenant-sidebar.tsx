@@ -47,9 +47,9 @@ export function TenantSidebar({
 
       <aside
         className={cn(
-          "z-30 w-60 shrink-0 border-r border-[var(--border)]/60 bg-[var(--background)]",
+          "z-30 w-[17rem] max-w-[85vw] shrink-0 border-r border-[var(--border)]/60 bg-[var(--background)]",
           // Desktop: sticky alongside main content.
-          "lg:sticky lg:top-0 lg:block lg:h-[calc(100dvh-0px)]",
+          "lg:sticky lg:top-0 lg:block lg:h-[100dvh] lg:w-60 lg:max-w-none",
           // Mobile: slide-in drawer.
           "fixed inset-y-0 left-0 transition-transform duration-200 lg:transition-none",
           open ? "translate-x-0" : "-translate-x-full lg:translate-x-0",

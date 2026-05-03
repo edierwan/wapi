@@ -47,6 +47,72 @@ const INDUSTRY_NATURE_MAP: Record<string, RefBusinessNature["code"]> = {
   other: "service",
 };
 
+const BUSINESS_NAME_INDUSTRY_KEYWORDS: Array<{
+  code: RefIndustry["code"];
+  keywords: string[];
+}> = [
+  {
+    code: "clinic_healthcare",
+    keywords: ["healthcare", "medical", "hospital", "doctor", "clinic", "klinik"],
+  },
+  {
+    code: "dental_clinic",
+    keywords: ["orthodontic", "dentist", "dental"],
+  },
+  {
+    code: "beauty_salon",
+    keywords: ["aesthetic", "beauty", "salon", "spa"],
+  },
+  {
+    code: "restaurant_cafe",
+    keywords: ["restaurant", "coffee", "cafe", "food", "makan"],
+  },
+  {
+    code: "ecommerce",
+    keywords: ["ecommerce", "e-commerce", "online store"],
+  },
+  {
+    code: "retail_shop",
+    keywords: ["retail", "store", "shop", "kedai"],
+  },
+  {
+    code: "car_dealer",
+    keywords: ["dealer", "motor", "auto", "car"],
+  },
+  {
+    code: "property_real_estate",
+    keywords: ["real estate", "realtor", "property"],
+  },
+  {
+    code: "education_training",
+    keywords: ["education", "training", "tuition", "school"],
+  },
+  {
+    code: "repair_workshop",
+    keywords: ["workshop", "repair"],
+  },
+  {
+    code: "fitness_wellness",
+    keywords: ["wellness", "fitness", "gym"],
+  },
+  {
+    code: "travel_tourism",
+    keywords: ["tourism", "travel", "hotel"],
+  },
+  {
+    code: "insurance",
+    keywords: ["insurance"],
+  },
+  {
+    code: "financial_services",
+    keywords: ["accounting", "financial", "finance"],
+  },
+  {
+    code: "service_contractor",
+    keywords: ["maintenance", "contractor", "service"],
+  },
+];
+
 const NATURE_CODE_TO_LEGACY: Record<RefBusinessNature["code"], BusinessNature> = {
   product: "product",
   service: "service",
@@ -56,6 +122,47 @@ const NATURE_CODE_TO_LEGACY: Record<RefBusinessNature["code"], BusinessNature> =
   support_helpdesk: "support",
   other: "other",
 };
+
+type IndustrySuggestion = {
+  industryId: string;
+  industryCode: RefIndustry["code"];
+  industryName: string;
+  matchedKeyword: string;
+};
+
+function normalizeBusinessNameForInference(input: string) {
+  return input
+    .toLowerCase()
+    .replace(/[^a-z0-9\s-]+/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+export function inferIndustrySuggestionFromBusinessName(
+  businessName: string,
+  industries: Array<Pick<RefIndustry, "id" | "code" | "name">>,
+): IndustrySuggestion | null {
+  const normalized = normalizeBusinessNameForInference(businessName);
+  if (!normalized) return null;
+
+  for (const candidate of BUSINESS_NAME_INDUSTRY_KEYWORDS) {
+    for (const keyword of candidate.keywords) {
+      if (!normalized.includes(keyword)) continue;
+
+      const industry = industries.find((entry) => entry.code === candidate.code);
+      if (!industry) continue;
+
+      return {
+        industryId: industry.id,
+        industryCode: industry.code,
+        industryName: industry.name,
+        matchedKeyword: keyword,
+      };
+    }
+  }
+
+  return null;
+}
 
 /**
  * Reference / master data loaders. All return only `status='active'` rows

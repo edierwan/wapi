@@ -102,7 +102,7 @@ export default async function TenantWorkspacePage({
         title={tenant.name}
         description="Overview of your workspace readiness, channels, and next steps."
         actions={
-          <Button asChild variant="outline" size="sm">
+          <Button asChild variant="outline" size="sm" className="w-full sm:w-auto">
             <Link href="/dashboard">Switch workspace</Link>
           </Button>
         }
@@ -134,11 +134,11 @@ export default async function TenantWorkspacePage({
         />
       </div>
 
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         {tiles.map((t) => {
           const Icon = t.Icon;
           const card = (
-            <Card className={t.soon ? "opacity-90" : "transition hover:border-[var(--primary)]/40"}>
+            <Card className={t.soon ? "h-full opacity-90" : "h-full transition hover:border-[var(--primary)]/40"}>
               <CardHeader>
                 <div className="mb-3 inline-flex size-10 items-center justify-center rounded-lg bg-[color-mix(in_oklch,var(--primary)_12%,transparent)] text-[var(--primary)]">
                   <Icon className="size-5" />

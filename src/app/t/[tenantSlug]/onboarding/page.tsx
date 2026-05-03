@@ -3,7 +3,10 @@ import { redirect } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { requireTenantContext } from "@/server/tenant-guard";
 import { getBusinessProfile } from "@/server/business-profile";
-import { loadOnboardingReferenceData } from "@/server/reference-data";
+import {
+  inferIndustrySuggestionFromBusinessName,
+  loadOnboardingReferenceData,
+} from "@/server/reference-data";
 import { saveBusinessProfileAction } from "./actions";
 import { OnboardingForm } from "./onboarding-form";
 
@@ -25,10 +28,13 @@ export default async function OnboardingPage({
     getBusinessProfile(ctx.tenant.id),
     loadOnboardingReferenceData(),
   ]);
+  const industrySuggestion = existing?.industryId
+    ? null
+    : inferIndustrySuggestionFromBusinessName(ctx.tenant.name, refData.industries);
 
   return (
-    <section className="mx-auto max-w-3xl px-4 py-12 sm:px-6">
-      <div className="mb-8 text-center">
+    <section className="mx-auto w-full max-w-6xl px-4 py-8 sm:px-6 lg:px-8">
+      <div className="mb-8 max-w-3xl">
         <p className="text-xs uppercase tracking-wider text-[var(--muted-foreground)]">
           {existing?.onboardingCompletedAt ? "Update business profile" : "Welcome to WAPI"}
         </p>
@@ -36,9 +42,8 @@ export default async function OnboardingPage({
           Set up {ctx.tenant.name}
         </h1>
         <p className="mt-3 text-sm text-[var(--muted-foreground)]">
-          Start with your industry and country. WAPI infers the rest so your
-          AI workspace is usable immediately, and you can fine-tune details later
-          under Settings → Business.
+          Confirm your business details once so your workspace opens with the
+          right defaults.
         </p>
       </div>
 
@@ -62,12 +67,14 @@ export default async function OnboardingPage({
             websiteUrl: existing?.websiteUrl ?? null,
             industryFreeText: existing?.industry ?? null,
             legacyBusinessNature: existing?.businessNature ?? null,
+            suggestedIndustryId: industrySuggestion?.industryId ?? null,
+            suggestedIndustryName: industrySuggestion?.industryName ?? null,
           }}
         />
 
-        <div className="flex items-center justify-between gap-3">
+        <div className="flex flex-col-reverse gap-3 sm:flex-row sm:items-center sm:justify-between">
           {existing?.onboardingCompletedAt ? (
-            <Button asChild variant="ghost" size="sm">
+            <Button asChild variant="ghost" size="sm" className="w-full sm:w-auto">
               <Link href={`/t/${ctx.tenant.slug}`}>Cancel</Link>
             </Button>
           ) : (
@@ -75,7 +82,7 @@ export default async function OnboardingPage({
               You can change everything later.
             </span>
           )}
-          <Button type="submit">Save &amp; continue</Button>
+          <Button type="submit" className="w-full sm:w-auto">Save &amp; continue</Button>
         </div>
       </form>
     </section>

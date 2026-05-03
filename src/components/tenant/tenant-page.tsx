@@ -8,7 +8,7 @@ export function TenantPage({
   className?: string;
 }) {
   return (
-    <section className={cn("mx-auto w-full max-w-7xl px-4 py-10 sm:px-6 lg:px-8", className)}>
+    <section className={cn("mx-auto w-full max-w-[1440px] px-4 py-8 sm:px-6 lg:px-8 xl:px-10", className)}>
       <div className="space-y-8">{children}</div>
     </section>
   );
@@ -29,7 +29,7 @@ export function TenantPageHeader({
 }) {
   return (
     <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-      <div className="min-w-0 max-w-4xl">
+      <div className="min-w-0 max-w-5xl">
         <p className="text-xs font-semibold tracking-wide text-[var(--muted-foreground)]">
           {sectionLabel}
         </p>
@@ -47,7 +47,7 @@ export function TenantPageHeader({
           </div>
         ) : null}
       </div>
-      {actions ? <div className="flex shrink-0 items-center gap-2">{actions}</div> : null}
+      {actions ? <div className="flex w-full shrink-0 items-stretch gap-2 sm:w-auto sm:items-center">{actions}</div> : null}
     </div>
   );
 }

@@ -26,15 +26,15 @@ export function RegisterForm() {
     <form action={formAction} className="mt-6 space-y-4">
       <Field
         name="businessName"
-        label="Business name"
-        placeholder="Klinik ABC Sdn Bhd"
+        label="Company name"
+        placeholder="Enter your company name"
         defaultValue={values.businessName}
         required
       />
       <Field
         name="fullName"
-        label="Your full name"
-        placeholder="Ada Lovelace"
+        label="Full name"
+        placeholder="Enter your full name"
         defaultValue={values.fullName}
         required
         autoComplete="name"
@@ -49,7 +49,7 @@ export function RegisterForm() {
         autoComplete="email"
       />
 
-      <div className="grid grid-cols-[110px_1fr] gap-3">
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-[110px_1fr]">
         <div>
           <label htmlFor="cc" className="mb-1 block text-xs font-medium text-[var(--muted-foreground)]">
             Code
@@ -94,7 +94,7 @@ export function RegisterForm() {
         autoComplete="new-password"
       />
 
-      <div className="grid grid-cols-2 gap-3">
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
         <div>
           <label
             htmlFor="businessNature"
@@ -131,9 +131,11 @@ export function RegisterForm() {
         </div>
       )}
 
-      <Button type="submit" className="w-full" disabled={pending}>
-        {pending ? "Sending OTP…" : "Send WhatsApp OTP"}
-      </Button>
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-end">
+        <Button type="submit" className="w-full sm:w-auto sm:min-w-[180px]" disabled={pending}>
+          {pending ? "Sending OTP…" : "Send WhatsApp OTP"}
+        </Button>
+      </div>
 
       <p className="text-center text-xs text-[var(--muted-foreground)]">
         By registering you agree to the{" "}

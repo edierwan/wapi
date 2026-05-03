@@ -42,6 +42,8 @@ export type OnboardingDefaults = {
   supportEmail: string | null;
   websiteUrl: string | null;
   industryFreeText: string | null;
+  suggestedIndustryId: string | null;
+  suggestedIndustryName: string | null;
   // Legacy enum value (product, service, ...).
   legacyBusinessNature: string | null;
 };
@@ -86,7 +88,9 @@ export function OnboardingForm({
       timezoneFromCountry(refData.timezones, initialCountry) ??
       "",
   );
-  const [industryId, setIndustryId] = useState(defaults.industryId ?? "");
+  const [industryId, setIndustryId] = useState(
+    defaults.industryId ?? defaults.suggestedIndustryId ?? "",
+  );
 
   const selectedCountry = useMemo(
     () => refData.countries.find((c) => c.id === countryId) ?? null,
@@ -107,6 +111,11 @@ export function OnboardingForm({
   const selectedIndustry = useMemo(
     () => refData.industries.find((industry) => industry.id === industryId) ?? null,
     [refData.industries, industryId],
+  );
+  const showSuggestionNote = Boolean(
+    defaults.suggestedIndustryId &&
+      defaults.suggestedIndustryName &&
+      defaults.suggestedIndustryId === industryId,
   );
 
   function onCountryChange(newId: string) {
@@ -155,47 +164,30 @@ export function OnboardingForm({
 
       <Card>
         <CardHeader>
-          <CardTitle className="text-base">AI workspace setup</CardTitle>
+          <CardTitle className="text-base">Business profile</CardTitle>
           <CardDescription>
-            Keep setup lightweight. We use your industry and country to infer
-            your starting business type, language defaults, and AI tone.
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="grid gap-3 text-sm text-[var(--muted-foreground)] sm:grid-cols-3">
-          <div className="rounded-lg border border-[var(--border)] bg-[var(--muted)]/20 p-3">
-            <p className="text-xs font-semibold uppercase tracking-wide">Business type</p>
-            <p className="mt-1">Inferred from your industry so you can skip the setup quiz.</p>
-          </div>
-          <div className="rounded-lg border border-[var(--border)] bg-[var(--muted)]/20 p-3">
-            <p className="text-xs font-semibold uppercase tracking-wide">Language mode</p>
-            <p className="mt-1">AI starts in auto mode and falls back to your country defaults.</p>
-          </div>
-          <div className="rounded-lg border border-[var(--border)] bg-[var(--muted)]/20 p-3">
-            <p className="text-xs font-semibold uppercase tracking-wide">Brand voice</p>
-            <p className="mt-1">WAPI starts with a friendly professional tone you can refine later.</p>
-          </div>
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base">Basics</CardTitle>
-          <CardDescription>
-            The only inputs needed to get your workspace ready.
+            Confirm your business details so your workspace can be prepared correctly.
           </CardDescription>
         </CardHeader>
         <CardContent className="grid gap-4 sm:grid-cols-2">
-          <SelectField
-            label="Industry"
-            value={industryId}
-            onChange={setIndustryId}
-            placeholder="Select industry…"
-            options={refData.industries.map((i) => ({
-              value: i.id,
-              label: i.name,
-              hint: i.description ?? undefined,
-            }))}
-          />
+          <div className="sm:col-span-1">
+            <SelectField
+              label="Industry"
+              value={industryId}
+              onChange={setIndustryId}
+              placeholder="Select industry…"
+              options={refData.industries.map((i) => ({
+                value: i.id,
+                label: i.name,
+                hint: i.description ?? undefined,
+              }))}
+            />
+            {showSuggestionNote ? (
+              <p className="mt-2 text-xs text-[var(--muted-foreground)]">
+                Based on your company name, we selected {defaults.suggestedIndustryName}. You can change it if needed.
+              </p>
+            ) : null}
+          </div>
           <SelectField
             label="Primary country"
             value={countryId}
@@ -222,52 +214,9 @@ export function OnboardingForm({
           <div className="rounded-md border border-dashed border-[var(--border)] bg-[var(--muted)]/20 px-3 py-2 text-sm sm:col-span-2">
             <p className="font-medium text-[var(--foreground)]">Country defaults</p>
             <p className="mt-1 text-[var(--muted-foreground)]">
-              Currency {selectedCurrency?.code ?? "MYR"}, timezone {selectedTimezone?.label ?? "Asia/Kuala_Lumpur"}, and AI fallback language {selectedLanguage?.name ?? "English"} will be prepared automatically.
+              Currency {selectedCurrency?.code ?? "MYR"}, timezone {selectedTimezone?.label ?? "Asia/Kuala_Lumpur"}, and default language {selectedLanguage?.name ?? "English"} will be prepared automatically.
             </p>
           </div>
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base">Advanced settings</CardTitle>
-          <CardDescription>
-            Optional overrides if you want to fine-tune defaults before entering
-            the workspace.
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <details className="group rounded-lg border border-[var(--border)] bg-[var(--muted)]/10 p-4">
-            <summary className="cursor-pointer list-none text-sm font-medium text-[var(--foreground)]">
-              Advanced defaults
-            </summary>
-            <div className="mt-4 grid gap-4 sm:grid-cols-2">
-              <SelectField
-                label="Currency"
-                value={currencyId}
-                onChange={setCurrencyId}
-                options={refData.currencies.map((c) => ({
-                  value: c.id,
-                  label: `${c.code} — ${c.name}${c.symbol ? ` (${c.symbol})` : ""}`,
-                }))}
-              />
-              <SelectField
-                label="Timezone"
-                value={timezoneId}
-                onChange={setTimezoneId}
-                options={refData.timezones.map((t) => ({ value: t.id, label: t.label }))}
-              />
-              <div className="rounded-md border border-[var(--border)] bg-[var(--background)] px-3 py-2 text-sm sm:col-span-2">
-                <div className="mb-1 text-xs font-medium uppercase tracking-wide text-[var(--muted-foreground)]">
-                  AI language mode
-                </div>
-                <div className="font-medium text-[var(--foreground)]">Auto</div>
-                <p className="mt-1 text-xs text-[var(--muted-foreground)]">
-                  WAPI auto-detects the customer language and uses your country default as a fallback.
-                </p>
-              </div>
-            </div>
-          </details>
         </CardContent>
       </Card>
     </>
