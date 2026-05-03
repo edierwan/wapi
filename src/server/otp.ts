@@ -30,8 +30,14 @@ export async function sendOtpViaProvider(input: {
       : `Your WAPI verification code is ${input.code}. It expires in ${process.env.OTP_EXPIRES_MINUTES || 10} minutes. Do not share this code.`;
 
   if (usePlatformBroker) {
-    const baseUrl = process.env.GETOUCH_PLATFORM_API_URL?.trim() || "";
-    const platformAppKey = process.env.GETOUCH_PLATFORM_APP_KEY?.trim() || "";
+    const baseUrl =
+      process.env.PLATFORM_API_URL?.trim() ||
+      process.env.GETOUCH_PLATFORM_API_URL?.trim() ||
+      "";
+    const platformAppKey =
+      process.env.PLATFORM_APP_KEY?.trim() ||
+      process.env.GETOUCH_PLATFORM_APP_KEY?.trim() ||
+      "";
 
     if (!baseUrl || !platformAppKey) {
       if (devFallback && !requirePlatformAppKey) {

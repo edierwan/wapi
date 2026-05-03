@@ -21,8 +21,15 @@ export const env = {
     (process.env.TENANT_ROUTING_MODE as "path" | "subdomain" | undefined) ?? "path",
   SESSION_SECRET:
     process.env.SESSION_SECRET ?? process.env.BETTER_AUTH_SECRET ?? "",
-  GETOUCH_PLATFORM_API_URL: process.env.GETOUCH_PLATFORM_API_URL ?? "",
-  GETOUCH_PLATFORM_APP_KEY: process.env.GETOUCH_PLATFORM_APP_KEY ?? "",
+  PLATFORM_API_URL:
+    process.env.PLATFORM_API_URL ?? process.env.GETOUCH_PLATFORM_API_URL ?? "",
+  PLATFORM_APP_CODE: process.env.PLATFORM_APP_CODE ?? "wapi",
+  PLATFORM_APP_KEY:
+    process.env.PLATFORM_APP_KEY ?? process.env.GETOUCH_PLATFORM_APP_KEY ?? "",
+  GETOUCH_PLATFORM_API_URL:
+    process.env.GETOUCH_PLATFORM_API_URL ?? process.env.PLATFORM_API_URL ?? "",
+  GETOUCH_PLATFORM_APP_KEY:
+    process.env.GETOUCH_PLATFORM_APP_KEY ?? process.env.PLATFORM_APP_KEY ?? "",
   USE_PLATFORM_BROKER: process.env.USE_PLATFORM_BROKER === "true",
   REQUIRE_PLATFORM_APP_KEY: process.env.REQUIRE_PLATFORM_APP_KEY === "true",
   WA_GATEWAY_DEFAULT_URL: process.env.WA_GATEWAY_DEFAULT_URL ?? "",

@@ -9,33 +9,14 @@ import {
 } from "@/components/ui/card";
 import { env } from "@/lib/env";
 import { appConfig } from "@/config/app";
+import { PlatformRuntimePanels } from "./PlatformRuntimePanels";
 
 export const dynamic = "force-dynamic";
 
 export default async function Page() {
   const checkedAt = new Date();
   const registrationUrl = buildRegistrationUrl(env.APP_URL);
-  const platformConfigured = Boolean(
-    env.GETOUCH_PLATFORM_API_URL && env.GETOUCH_PLATFORM_APP_KEY,
-  );
-  const brokerEnabled = env.USE_PLATFORM_BROKER;
-  const brokerConnection = await checkPlatformBrokerConnection({
-    enabled: brokerEnabled,
-    apiUrl: env.GETOUCH_PLATFORM_API_URL,
-    appKey: env.GETOUCH_PLATFORM_APP_KEY,
-  });
-  const platformConnected = brokerConnection.connected;
-  const platformStatusLabel = platformConnected
-    ? "Connected"
-    : platformConfigured
-      ? "Configured"
-      : "Not Configured";
-  const platformStatusTone = platformConnected
-    ? "good"
-    : platformConfigured
-      ? "warning"
-      : "muted";
-  const platformKeyMasked = maskPlatformKey(env.GETOUCH_PLATFORM_APP_KEY);
+  const platformConfigured = Boolean(env.PLATFORM_API_URL && env.PLATFORM_APP_KEY);
   const hasLegacyCompatibilityConfig = Boolean(
     env.WA_GATEWAY_URL ||
       env.WA_GATEWAY_DEFAULT_URL ||
@@ -46,57 +27,10 @@ export default async function Page() {
       env.DIFY_APP_API_KEY,
   );
   const hasEvolutionSignal =
-    brokerEnabled ||
+    env.USE_PLATFORM_BROKER ||
     /evo|evolution/i.test(
       [env.WA_GATEWAY_URL, env.WA_GATEWAY_DEFAULT_URL, env.WA_PUBLIC_URL].join(" "),
     );
-
-  const serviceRows = [
-    {
-      label: "WhatsApp delivery",
-      provider: brokerEnabled ? "Platform Broker / Evolution" : "Evolution Gateway",
-      status: platformConnected
-        ? "Connected"
-        : platformConfigured
-          ? "Configured"
-          : "Not configured",
-      tone: platformConnected
-        ? "good"
-        : platformConfigured
-          ? "warning"
-          : "muted",
-    },
-    {
-      label: "AI chat / model routing",
-      provider: "LiteLLM / vLLM",
-      status: platformConfigured ? "Available" : "Not configured",
-      tone: platformConfigured ? "neutral" : "muted",
-    },
-    {
-      label: "Knowledge / workflow",
-      provider: "Dify",
-      status: platformConfigured ? "Available" : "Not configured",
-      tone: platformConfigured ? "neutral" : "muted",
-    },
-    {
-      label: "Customer inbox",
-      provider: "Chatwoot",
-      status: platformConfigured ? "Available" : "Not configured",
-      tone: platformConfigured ? "neutral" : "muted",
-    },
-    {
-      label: "Tracing / observability",
-      provider: "Langfuse",
-      status: platformConfigured ? "Available" : "Not configured",
-      tone: platformConfigured ? "neutral" : "muted",
-    },
-    {
-      label: "Vector memory",
-      provider: "Qdrant",
-      status: platformConfigured ? "Available" : "Optional",
-      tone: platformConfigured ? "neutral" : "warning",
-    },
-  ] as const;
 
   const featureFlags = [
     ["ENABLE_PUBLIC_REGISTRATION", env.ENABLE_PUBLIC_REGISTRATION ? "true" : "false"],
@@ -145,75 +79,13 @@ export default async function Page() {
           </CardContent>
         </Card>
 
-        <Card className="border-[var(--border)] shadow-sm shadow-black/5">
-          <CardHeader>
-            <CardTitle className="text-base">Platform Access</CardTitle>
-            <CardDescription>
-              WAPI connects to the shared platform.
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="overflow-hidden rounded-2xl border border-[var(--border)] bg-[var(--card)]">
-              <DetailRow
-                label="Platform API URL"
-                value={env.GETOUCH_PLATFORM_API_URL || "Not configured"}
-                href={env.GETOUCH_PLATFORM_API_URL || undefined}
-              />
-              <DetailRow
-                label="Platform app key"
-                value={platformKeyMasked || "Not configured"}
-              />
-              <DetailRow label="Registry app code" value="wapi" />
-              <DetailRow
-                label="Broker auth"
-                value={platformConnected ? "Passed" : platformConfigured ? "Pending" : "Not configured"}
-                trailing={<StatusPill tone={platformConnected ? "good" : platformConfigured ? "warning" : "muted"}>{platformConnected ? "Passed" : platformConfigured ? "Pending" : "Not configured"}</StatusPill>}
-              />
-              <DetailRow
-                label="Registry status"
-                value={platformStatusLabel}
-                className="border-b-0"
-                trailing={<StatusPill tone={platformStatusTone}>{platformStatusLabel}</StatusPill>}
-              />
-            </div>
-            <div className="rounded-2xl border border-sky-500/20 bg-sky-500/5 px-4 py-3 text-sm text-[var(--muted-foreground)]">
-              WAPI uses one platform app key. Dify, Evolution, Chatwoot,
-              LiteLLM, Langfuse, and other service access are resolved by the
-              platform broker.
-            </div>
-            {hasLegacyCompatibilityConfig ? (
-              <p className="text-xs leading-6 text-[var(--muted-foreground)]">
-                Legacy direct gateway compatibility env is still detected and may
-                remain active outside platform-broker mode.
-              </p>
-            ) : null}
-          </CardContent>
-        </Card>
-
-        <Card className="border-[var(--border)] shadow-sm shadow-black/5">
-          <CardHeader>
-            <CardTitle className="text-base">Service Routing</CardTitle>
-            <CardDescription>
-              Platform-managed service endpoints and status.
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            <div className="space-y-3 rounded-2xl border border-[var(--border)] bg-[var(--card)] p-3">
-              {serviceRows.map((service) => (
-                <ServiceRow
-                  key={service.label}
-                  label={service.label}
-                  provider={service.provider}
-                  status={service.status}
-                  tone={service.tone}
-                />
-              ))}
-            </div>
-            <p className="text-xs leading-6 text-[var(--muted-foreground)]">
-              Service-specific credentials are managed outside WAPI.
-            </p>
-          </CardContent>
-        </Card>
+        <PlatformRuntimePanels
+          platformApiConfigured={Boolean(env.PLATFORM_API_URL)}
+          platformAppKeyConfigured={Boolean(env.PLATFORM_APP_KEY)}
+          registryAppCode={env.PLATFORM_APP_CODE || "wapi"}
+          hasLegacyCompatibilityConfig={hasLegacyCompatibilityConfig}
+          hasEvolutionSignal={hasEvolutionSignal}
+        />
       </div>
 
       <div className="grid gap-6 xl:grid-cols-[1.5fr_1fr]">
@@ -254,10 +126,10 @@ export default async function Page() {
               <DetailRow label="Secret handling" value="Secrets are managed centrally." />
               <DetailRow
                 label="Last sync status"
-                value={platformConnected ? "Healthy" : platformConfigured ? "Configured" : "Not configured"}
+                value={platformConfigured ? "Not tested yet" : "Not configured"}
                 trailing={
-                  <StatusPill tone={platformConnected ? "good" : platformConfigured ? "warning" : "muted"}>
-                    {platformConnected ? "Healthy" : platformConfigured ? "Configured" : "Not configured"}
+                  <StatusPill tone={platformConfigured ? "warning" : "muted"}>
+                    {platformConfigured ? "Not tested yet" : "Not configured"}
                   </StatusPill>
                 }
               />
@@ -280,18 +152,6 @@ function buildRegistrationUrl(appUrl: string): string {
   } catch {
     return `${appUrl.replace(/\/$/, "")}/register`;
   }
-}
-
-function maskPlatformKey(raw: string): string {
-  const trimmed = raw.trim();
-  if (!trimmed) return "";
-
-  const parts = trimmed.split("_");
-  if (parts.length >= 3) {
-    return `${parts[0]}_${parts[1]}_${"•".repeat(12)}`;
-  }
-
-  return `${trimmed.slice(0, 6)}${"•".repeat(12)}`;
 }
 
 function StatusPill({
@@ -369,32 +229,4 @@ function ServiceRow({
       <StatusPill tone={tone}>{status}</StatusPill>
     </div>
   );
-}
-
-async function checkPlatformBrokerConnection(input: {
-  enabled: boolean;
-  apiUrl: string;
-  appKey: string;
-}): Promise<{ connected: boolean }> {
-  if (!input.enabled || !input.apiUrl || !input.appKey) {
-    return { connected: false };
-  }
-
-  try {
-    const res = await fetch(`${input.apiUrl.replace(/\/$/, "")}/auth/check`, {
-      method: "POST",
-      headers: {
-        "x-platform-app-key": input.appKey,
-      },
-      cache: "no-store",
-      signal: AbortSignal.timeout(5_000),
-    });
-
-    if (!res.ok) return { connected: false };
-
-    const json = (await res.json().catch(() => null)) as { ok?: boolean } | null;
-    return { connected: Boolean(json?.ok) };
-  } catch {
-    return { connected: false };
-  }
 }
