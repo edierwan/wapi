@@ -22,7 +22,6 @@ type AdminTarget = {
   id: string;
   email: string;
   phone: string | null;
-  isSystemAdmin: boolean;
 };
 
 async function requireAdminUser() {
@@ -49,7 +48,6 @@ async function loadTarget(userId: string): Promise<AdminTarget | null> {
       id: users.id,
       email: users.email,
       phone: users.phone,
-      isSystemAdmin: users.isSystemAdmin,
     })
     .from(users)
     .where(eq(users.id, userId))
@@ -151,11 +149,11 @@ export async function deleteUserAction(formData: FormData) {
     );
   }
 
-  if (target.isSystemAdmin || (await hasProtectedSystemRole(target.id))) {
+  if (await hasProtectedSystemRole(target.id)) {
     bounce(
       "/admin/users",
       "error",
-      `Protected system admin accounts cannot be deleted from this page (${target.email}).`,
+      `Accounts with active system roles cannot be deleted from this page (${target.email}).`,
     );
   }
 

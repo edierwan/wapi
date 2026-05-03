@@ -3,7 +3,7 @@
  *
  *   Usage:
  *     # requires DATABASE_URL exported (or a .env.local file)
- *     pnpm tsx scripts/seed.ts [email protected]
+ *     ENABLE_DEMO_SEED=true pnpm tsx scripts/seed.ts [email protected]
  *
  * Creates:
  *   - a user (the first CLI arg, or SEED_EMAIL env, defaults to [email protected])
@@ -33,6 +33,14 @@ for (const envFile of envFiles) {
 }
 
 async function main() {
+  const demoSeedEnabled = (process.env.ENABLE_DEMO_SEED ?? "").toLowerCase() === "true";
+  if (!demoSeedEnabled) {
+    console.error(
+      "ERROR: Demo seed is disabled. Set ENABLE_DEMO_SEED=true or use `pnpm db:seed:demo` when you intentionally want demo data.",
+    );
+    process.exit(1);
+  }
+
   const url = process.env.DATABASE_URL;
   if (!url) {
     console.error(
@@ -68,7 +76,7 @@ async function main() {
         .values({
           email,
           name: "Demo Admin",
-          isSystemAdmin: true,
+          isSystemAdmin: false,
           passwordHash,
         })
         .returning()
@@ -82,12 +90,19 @@ async function main() {
     const passwordHash = await bcrypt.hash(ownerPassword, 12);
     [user] = await db
       .update(schema.users)
-      .set({ passwordHash })
+      .set({ passwordHash, isSystemAdmin: false })
       .where(eq(schema.users.id, user.id))
       .returning();
     console.log(
       `  ✓ ${user.passwordHash ? "reset" : "set"} owner password hash for ${email}`,
     );
+  } else if (user.isSystemAdmin) {
+    [user] = await db
+      .update(schema.users)
+      .set({ isSystemAdmin: false })
+      .where(eq(schema.users.id, user.id))
+      .returning();
+    console.log("  ✓ cleared legacy system-admin flag on demo owner");
   }
 
   // 2) tenant

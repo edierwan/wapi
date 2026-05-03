@@ -17,6 +17,34 @@ import { deleteUserAction, resetUserForTestingAction } from "./actions";
 
 export const dynamic = "force-dynamic";
 
+function looksLikeSeededDemoUser(
+  user: { name: string | null; email: string | null; phone: string | null },
+  memberships: Array<{ tenantName: string; tenantSlug: string }>,
+) {
+  const name = (user.name ?? "").toLowerCase();
+  const email = (user.email ?? "").toLowerCase();
+  const phone = (user.phone ?? "").replace(/\D+/g, "");
+
+  if (name.includes("demo") || email.includes("demo") || email.includes("local.invalid")) {
+    return true;
+  }
+
+  if (phone.endsWith("60192277233") || phone.endsWith("0192277233")) {
+    return true;
+  }
+
+  return memberships.some((membership) => {
+    const tenantName = membership.tenantName.toLowerCase();
+    const tenantSlug = membership.tenantSlug.toLowerCase();
+    return (
+      tenantName.includes("demo") ||
+      tenantName.includes("phase 3") ||
+      tenantSlug.includes("demo") ||
+      tenantSlug.startsWith("phase3")
+    );
+  });
+}
+
 export default async function Page({
   searchParams,
 }: {
@@ -167,7 +195,7 @@ export default async function Page({
           <CardTitle className="text-base">Directory</CardTitle>
           <CardDescription>
             Cleanup clears pending registration and OTP rows for the same email or phone.
-            Delete removes the user only after typed email confirmation and is blocked for protected system admins.
+            Delete removes the user only after typed email confirmation and is blocked for accounts with active system roles.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
@@ -191,7 +219,15 @@ export default async function Page({
                     const memberships = membershipsByUser.get(user.id) ?? [];
                     const systemRoles = systemRolesByUser.get(user.id) ?? [];
                     const isCurrentUser = user.id === me?.id;
-                    const isProtectedAdmin = user.isSystemAdmin || systemRoles.length > 0;
+                    const hasProtectedSystemRole = systemRoles.length > 0;
+                    const protectionReason = hasProtectedSystemRole
+                      ? "Protected because system role"
+                      : user.isSystemAdmin
+                        ? looksLikeSeededDemoUser(user, memberships)
+                          ? "Seeded demo account"
+                          : "Legacy admin flag"
+                        : null;
+                    const deleteBlocked = isCurrentUser || hasProtectedSystemRole;
 
                     return (
                       <tr key={user.id} className="align-top">
@@ -207,7 +243,7 @@ export default async function Page({
                           </div>
                           <div className="mt-2 flex flex-wrap gap-2">
                             <Badge>{user.status}</Badge>
-                            {isProtectedAdmin ? <Badge>Protected admin</Badge> : null}
+                            {protectionReason ? <Badge>{protectionReason}</Badge> : null}
                             {isCurrentUser ? <Badge>Current session</Badge> : null}
                           </div>
                         </td>
@@ -269,14 +305,14 @@ export default async function Page({
                                 type="text"
                                 name="confirmEmail"
                                 placeholder={`Type ${user.email}`}
-                                disabled={isCurrentUser || isProtectedAdmin}
+                                disabled={deleteBlocked}
                                 className="w-full rounded-md border border-[var(--border)] bg-[var(--background)] px-3 py-2 text-xs"
                               />
                               <label className="flex items-start gap-2 text-left text-[11px] text-[var(--muted-foreground)]">
                                 <input
                                   type="checkbox"
                                   name="alsoDeleteOwnedTenants"
-                                  disabled={isCurrentUser || isProtectedAdmin}
+                                  disabled={deleteBlocked}
                                   className="mt-0.5"
                                 />
                                 <span>
@@ -289,7 +325,7 @@ export default async function Page({
                                   type="checkbox"
                                   name="alsoPurgeStorage"
                                   disabled={
-                                    isCurrentUser || isProtectedAdmin || !storageActive
+                                    deleteBlocked || !storageActive
                                   }
                                   className="mt-0.5"
                                 />
@@ -311,7 +347,7 @@ export default async function Page({
                                 type="submit"
                                 variant="outline"
                                 size="sm"
-                                disabled={isCurrentUser || isProtectedAdmin}
+                                disabled={deleteBlocked}
                                 className="w-full border-red-500/30 text-red-700 hover:bg-red-500/10 hover:text-red-700 dark:text-red-300"
                               >
                                 Delete user
