@@ -28,6 +28,12 @@ const OTP_EXPIRES_MIN = Number(process.env.OTP_EXPIRES_MINUTES || 10);
 const OTP_RESEND_COOLDOWN_S = Number(process.env.OTP_RESEND_COOLDOWN_SECONDS || 60);
 const PENDING_TTL_MIN = 30;
 
+function resolveOtpProviderName(): string {
+  return process.env.USE_PLATFORM_BROKER === "true"
+    ? "platform_broker"
+    : process.env.OTP_PROVIDER || "whatsapp_gateway";
+}
+
 export type StartRegistrationInput = {
   businessName: string;
   fullName: string;
@@ -129,6 +135,7 @@ export async function startRegistration(
     phone,
     code,
     purpose: "register",
+    businessName,
   });
 
   await db.insert(phoneVerifications).values({
@@ -137,7 +144,7 @@ export async function startRegistration(
     codeHash,
     purpose: "register",
     expiresAt: otpExpires,
-    provider: process.env.OTP_PROVIDER || "whatsapp_gateway",
+    provider: resolveOtpProviderName(),
     providerMessageId: sendRes.providerMessageId,
   });
 
@@ -196,6 +203,7 @@ export async function resendRegistrationOtp(
     phone: pending.phone,
     code,
     purpose: "register",
+    businessName: pending.businessName,
   });
 
   await db.insert(phoneVerifications).values({
@@ -204,7 +212,7 @@ export async function resendRegistrationOtp(
     codeHash,
     purpose: "register",
     expiresAt,
-    provider: process.env.OTP_PROVIDER || "whatsapp_gateway",
+    provider: resolveOtpProviderName(),
     providerMessageId: sendRes.providerMessageId,
   });
 

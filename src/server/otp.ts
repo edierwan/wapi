@@ -17,14 +17,106 @@ export async function sendOtpViaProvider(input: {
   phone: string;
   code: string;
   purpose?: string;
+  businessName?: string;
 }): Promise<OtpSendResult> {
   const provider = process.env.OTP_PROVIDER || "whatsapp_gateway";
   const devFallback = process.env.ENABLE_DEV_OTP_FALLBACK === "true";
+  const usePlatformBroker = process.env.USE_PLATFORM_BROKER === "true";
+  const requirePlatformAppKey = process.env.REQUIRE_PLATFORM_APP_KEY === "true";
 
   const text =
     input.purpose === "password_reset"
       ? `Your WAPI password reset code is ${input.code}. It expires in ${process.env.OTP_EXPIRES_MINUTES || 10} minutes. Do not share this code.`
       : `Your WAPI verification code is ${input.code}. It expires in ${process.env.OTP_EXPIRES_MINUTES || 10} minutes. Do not share this code.`;
+
+  if (usePlatformBroker) {
+    const baseUrl = process.env.GETOUCH_PLATFORM_API_URL?.trim() || "";
+    const platformAppKey = process.env.GETOUCH_PLATFORM_APP_KEY?.trim() || "";
+
+    if (!baseUrl || !platformAppKey) {
+      if (devFallback && !requirePlatformAppKey) {
+        return {
+          ok: true,
+          providerMessageId: null,
+          debugCode: input.code,
+        };
+      }
+      return {
+        ok: false,
+        providerMessageId: null,
+        error: "Platform broker is not configured.",
+      };
+    }
+
+    const endpoint = input.purpose === "password_reset"
+      ? "/whatsapp/send-message"
+      : "/whatsapp/send-otp";
+
+    const requestBody = input.purpose === "password_reset"
+      ? {
+          to: input.phone,
+          message: text,
+          purpose: input.purpose || "otp",
+        }
+      : {
+          to: input.phone,
+          code: input.code,
+          business_name: input.businessName || "WAPI",
+        };
+
+    try {
+      const res = await fetch(`${baseUrl.replace(/\/$/, "")}${endpoint}`, {
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+          "x-platform-app-key": platformAppKey,
+        },
+        body: JSON.stringify(requestBody),
+        signal: AbortSignal.timeout(10_000),
+      });
+
+      const rawBody = await res.text().catch(() => "");
+      let jsonBody: Record<string, unknown> | null = null;
+      if (rawBody) {
+        try {
+          jsonBody = JSON.parse(rawBody) as Record<string, unknown>;
+        } catch {
+          jsonBody = null;
+        }
+      }
+
+      if (!res.ok) {
+        const detail = jsonBody && typeof jsonBody.message === "string"
+          ? jsonBody.message
+          : jsonBody && typeof jsonBody.error === "string"
+            ? jsonBody.error
+            : rawBody.slice(0, 200);
+        return {
+          ok: devFallback && !requirePlatformAppKey,
+          providerMessageId: null,
+          error: detail || `Platform broker responded ${res.status}.`,
+          debugCode: devFallback && !requirePlatformAppKey ? input.code : undefined,
+        };
+      }
+
+      const providerMessageId = jsonBody
+        ? (jsonBody.message_id as string) ?? (jsonBody.messageId as string) ?? (jsonBody.id as string) ?? null
+        : null;
+
+      return {
+        ok: true,
+        providerMessageId,
+        debugCode: devFallback ? input.code : undefined,
+      };
+    } catch (err) {
+      return {
+        ok: devFallback && !requirePlatformAppKey,
+        providerMessageId: null,
+        error: err instanceof Error ? err.message : String(err),
+        debugCode: devFallback && !requirePlatformAppKey ? input.code : undefined,
+      };
+    }
+  }
 
   if (provider === "whatsapp_gateway") {
     const base = process.env.WA_GATEWAY_URL || process.env.WA_GATEWAY_DEFAULT_URL;
