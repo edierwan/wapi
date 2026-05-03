@@ -9,7 +9,12 @@ import {
   users,
 } from "@/db/schema";
 import { invalidateSessionsForUser } from "@/server/auth";
-import { generateOtpCode, hashOtpCode, sendOtpViaProvider } from "@/server/otp";
+import {
+  generateOtpCode,
+  hashOtpCode,
+  isPlatformBrokerConfigured,
+  sendOtpViaProvider,
+} from "@/server/otp";
 import { hashPassword } from "@/server/password";
 import { findUserByIdentifier } from "@/server/user-identifiers";
 
@@ -88,14 +93,18 @@ export async function requestPasswordReset(
     codeHash,
     purpose: "password_reset",
     expiresAt,
-    provider: process.env.OTP_PROVIDER || "whatsapp_gateway",
+    provider: isPlatformBrokerConfigured()
+      ? "platform_broker"
+      : process.env.OTP_PROVIDER || "whatsapp_gateway",
     providerMessageId: sendRes.providerMessageId,
   });
 
   if (!sendRes.ok) {
     console.error("[password-reset] failed to send password reset OTP", {
       userId: user.id,
-      provider: process.env.OTP_PROVIDER || "whatsapp_gateway",
+      provider: isPlatformBrokerConfigured()
+        ? "platform_broker"
+        : process.env.OTP_PROVIDER || "whatsapp_gateway",
       error: sendRes.error,
     });
   }

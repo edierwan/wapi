@@ -17,6 +17,7 @@ import { issueSessionForUser } from "./auth";
 import {
   generateOtpCode,
   hashOtpCode,
+  isPlatformBrokerConfigured,
   sendOtpViaProvider,
   type OtpSendResult,
 } from "./otp";
@@ -29,7 +30,7 @@ const OTP_RESEND_COOLDOWN_S = Number(process.env.OTP_RESEND_COOLDOWN_SECONDS || 
 const PENDING_TTL_MIN = 30;
 
 function resolveOtpProviderName(): string {
-  return process.env.USE_PLATFORM_BROKER === "true"
+  return isPlatformBrokerConfigured()
     ? "platform_broker"
     : process.env.OTP_PROVIDER || "whatsapp_gateway";
 }

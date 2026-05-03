@@ -13,6 +13,37 @@ export type OtpSendResult = {
   error?: string;
 };
 
+function resolvePlatformBrokerConfig() {
+  const baseUrl =
+    process.env.PLATFORM_API_URL?.trim() ||
+    process.env.GETOUCH_PLATFORM_API_URL?.trim() ||
+    "";
+  const platformAppKey =
+    process.env.PLATFORM_APP_KEY?.trim() ||
+    process.env.GETOUCH_PLATFORM_APP_KEY?.trim() ||
+    "";
+
+  return {
+    baseUrl,
+    platformAppKey,
+    configured: Boolean(baseUrl && platformAppKey),
+  };
+}
+
+export function isPlatformBrokerConfigured(): boolean {
+  return resolvePlatformBrokerConfig().configured;
+}
+
+function formatPlatformBrokerError(status: number, detail: string): string {
+  if (status === 401 || status === 403) {
+    return "Platform broker auth failed. Check WAPI Coolify env and portal app key.";
+  }
+  if (detail) {
+    return `Platform broker send failed. ${detail}`;
+  }
+  return `Platform broker send failed (HTTP ${status}).`;
+}
+
 export async function sendOtpViaProvider(input: {
   phone: string;
   code: string;
@@ -23,36 +54,15 @@ export async function sendOtpViaProvider(input: {
   const devFallback = process.env.ENABLE_DEV_OTP_FALLBACK === "true";
   const usePlatformBroker = process.env.USE_PLATFORM_BROKER === "true";
   const requirePlatformAppKey = process.env.REQUIRE_PLATFORM_APP_KEY === "true";
+  const brokerConfig = resolvePlatformBrokerConfig();
 
   const text =
     input.purpose === "password_reset"
       ? `Your WAPI password reset code is ${input.code}. It expires in ${process.env.OTP_EXPIRES_MINUTES || 10} minutes. Do not share this code.`
       : `Your WAPI verification code is ${input.code}. It expires in ${process.env.OTP_EXPIRES_MINUTES || 10} minutes. Do not share this code.`;
 
-  if (usePlatformBroker) {
-    const baseUrl =
-      process.env.PLATFORM_API_URL?.trim() ||
-      process.env.GETOUCH_PLATFORM_API_URL?.trim() ||
-      "";
-    const platformAppKey =
-      process.env.PLATFORM_APP_KEY?.trim() ||
-      process.env.GETOUCH_PLATFORM_APP_KEY?.trim() ||
-      "";
-
-    if (!baseUrl || !platformAppKey) {
-      if (devFallback && !requirePlatformAppKey) {
-        return {
-          ok: true,
-          providerMessageId: null,
-          debugCode: input.code,
-        };
-      }
-      return {
-        ok: false,
-        providerMessageId: null,
-        error: "Platform broker is not configured.",
-      };
-    }
+  if (brokerConfig.configured) {
+    const { baseUrl, platformAppKey } = brokerConfig;
 
     const endpoint = input.purpose === "password_reset"
       ? "/whatsapp/send-message"
@@ -100,7 +110,7 @@ export async function sendOtpViaProvider(input: {
         return {
           ok: devFallback && !requirePlatformAppKey,
           providerMessageId: null,
-          error: detail || `Platform broker responded ${res.status}.`,
+          error: formatPlatformBrokerError(res.status, detail),
           debugCode: devFallback && !requirePlatformAppKey ? input.code : undefined,
         };
       }
@@ -115,16 +125,17 @@ export async function sendOtpViaProvider(input: {
         debugCode: devFallback ? input.code : undefined,
       };
     } catch (err) {
+      const detail = err instanceof Error ? err.message : String(err);
       return {
         ok: devFallback && !requirePlatformAppKey,
         providerMessageId: null,
-        error: err instanceof Error ? err.message : String(err),
+        error: formatPlatformBrokerError(0, detail),
         debugCode: devFallback && !requirePlatformAppKey ? input.code : undefined,
       };
     }
   }
 
-  if (provider === "whatsapp_gateway") {
+  if (provider === "whatsapp_gateway" || usePlatformBroker) {
     const base = process.env.WA_GATEWAY_URL || process.env.WA_GATEWAY_DEFAULT_URL;
     if (!base) {
       // Gateway not configured → dev fallback or hard fail.
@@ -138,7 +149,7 @@ export async function sendOtpViaProvider(input: {
       return {
         ok: false,
         providerMessageId: null,
-        error: "WhatsApp gateway is not configured.",
+        error: "WhatsApp delivery is not configured.",
       };
     }
 
